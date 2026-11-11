@@ -50,6 +50,8 @@ test
 prompt
 
 server.log
+# GitHub token – SOHA nem kerül commitba!
+.github-token*
 # Skills directory
 /skills/
 # sandbox lokális fájlok
