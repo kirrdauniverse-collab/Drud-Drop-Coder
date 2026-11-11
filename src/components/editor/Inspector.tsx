@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useEditor, resolveTypeDef } from "@/store/editor";
 import { CATEGORY_META, type BlockParamDef } from "@/lib/types";
 import { blockIcon } from "./icons";
@@ -103,15 +103,23 @@ export function Inspector() {
                 {def.params.length === 0 && (
                   <p className="text-[11px] text-zinc-500 italic">Ennek a blokknak nincs beállítása.</p>
                 )}
-                {def.params.map((pd) => (
-                  <ParamControl
-                    key={pd.key}
-                    def={pd}
-                    value={block.params[pd.key]}
-                    maxStart={project.stepCount - block.start}
-                    onChange={(v, commit) => updateParam(block.id, pd.key, v, commit)}
-                    onGestureStart={() => pushHistory()}
-                  />
+                {def.params.map((pd, idx) => (
+                  <Fragment key={pd.key}>
+                    {pd.group && (idx === 0 || def.params[idx - 1].group !== pd.group) && (
+                      <div
+                        className={`text-[10px] font-bold uppercase tracking-wider text-zinc-500 ${idx === 0 ? "pb-0.5" : "border-t border-zinc-800/70 pt-2.5 mt-1"}`}
+                      >
+                        {pd.group}
+                      </div>
+                    )}
+                    <ParamControl
+                      def={pd}
+                      value={block.params[pd.key]}
+                      maxStart={project.stepCount - block.start}
+                      onChange={(v, commit) => updateParam(block.id, pd.key, v, commit)}
+                      onGestureStart={() => pushHistory()}
+                    />
+                  </Fragment>
                 ))}
               </div>
 
@@ -153,8 +161,13 @@ export function Inspector() {
               <p className="text-[11px] text-zinc-400">{meta.description}</p>
               <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
                 <p className="text-[11px] text-zinc-400">
-                  A sáv némításával kikapcsolhatod az összes blokkját lejátszáskor – pontosan úgy,
-                  mint egy zeneszerkesztőben. A Szóló (S) gombbal csak ez az egy sáv fut.
+                  {track.category === "sound" || track.category === "custom" ? (
+                    <>Hangsáv: a hangerőcsúszkával hangolhatod, az M gombbal lenémíthatod, az S gombbal szólóztathatod – pontosan úgy, mint egy zeneszerkesztőben. A szóló a többi sáv hangját is elnémítja, de a grafika tovább fut.</>
+                  ) : track.category === "graphics" ? (
+                    <>Vizuális sáv: a szem ikonnal elrejtheted a blokkjait anélkül, hogy törölnéd őket – így gyorsan kipróbálhatod, milyen nélküle a kompozíció.</>
+                  ) : (
+                    <>Futtató sáv: a kapcsolóval ki- és bekapcsolhatod a blokkjait. Kikapcsolt állapotban a logika, bemenet vagy adat rutinok nem futnak le.</>
+                  )}
                 </p>
                 <Button
                   size="sm"

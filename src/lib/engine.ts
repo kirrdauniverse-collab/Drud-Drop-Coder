@@ -36,6 +36,9 @@ interface Entity {
   spin: boolean;
   rotation: number;
   spinSpeed: number;
+  alpha: number;      // átlátszóság (1 = opak)
+  align?: string;     // szöveg igazítása
+  fade?: boolean;     // fokozatos beúszás
   bornAt: number;
   poly: number[];
   baseX: number;       // eredeti hely (patrol/orbit)
@@ -54,6 +57,8 @@ interface BgState {
   type: "none" | "preset" | "color" | "image";
   preset?: string;
   color?: string;
+  color2?: string;  // átmenet alsó színe
+  dim?: number;     // sötétítés 0..0.8
   image?: HTMLImageElement;
 }
 
@@ -103,7 +108,7 @@ export class RuntimeEngine {
   } | null = null;
   private spawners: {
     until: number; nextAt: number; everyMs: number;
-    spec: { style: string; role: string; move: string; speed: number; size: number; color: string; value: number; randomX: boolean };
+    spec: { style: string; role: string; move: string; speed: number; size: number; color: string; value: number; randomX: boolean; dir: number; alpha: number; spin: boolean; count: number };
   }[] = [];
   private finished: "win" | "lose" | null = null;
   private finishLabel = "";
@@ -298,6 +303,9 @@ export class RuntimeEngine {
       spin: p.spin ?? false,
       rotation: Math.random() * Math.PI * 2,
       spinSpeed: (Math.random() - 0.5) * 4,
+      alpha: p.alpha ?? 1,
+      align: p.align,
+      fade: p.fade,
       bornAt: performance.now(),
       poly: Array.from({ length: 8 }, () => 0.75 + Math.random() * 0.5),
       baseX: p.x, baseY: p.y,
@@ -334,29 +342,44 @@ export class RuntimeEngine {
     const y = roleRaw === "enemy" && (String(pr.move ?? "") === "fall") ? -6 : yRaw;
     const move = String(pr.move ?? "static");
     const speed = Number(pr.speed ?? 60);
+    const dir = String(pr.direction ?? "right") === "left" ? -1 : 1;
+    const alpha = pr.opacity === undefined ? 1 : Math.max(0.05, Math.min(1, Number(pr.opacity) / 100));
+    const spin = Boolean(pr.spin ?? false);
+    const count = Math.max(1, Math.min(12, Math.round(Number(pr.count ?? 1))));
     // Mozgásból adódó kezdő sebesség (a futtatókörben a move-vezérlés tartja karban)
     let vx = 0, vy = 0;
     if (move === "fall") vy = speed;
     else if (move === "rise") vy = -speed;
-    else if (move === "drift") vx = speed;
-    else if (move === "bounce") { vx = speed; vy = speed * 0.7; }
-    else if (move === "patrol") vx = speed;
-    else if (move === "wave") { vy = speed * 0.5; vx = speed; }
-    const e = this.spawn({
-      kind: "shape", role, style, move, speed,
-      x, y, vx, vy,
-      size: Number(pr.size ?? 30),
-      w: Number(pr.size ?? 30) * 1.6,
-      h: Number(pr.height ?? 26),
-      value: Number(pr.value ?? 5),
-      color: String(pr.color ?? "#fbbf24"),
-      sticky, life: sticky ? null : opts.life,
-      srcId: opts.srcId,
-    });
-    if (role === "pickup" && style === "heart") e.value = Math.max(1, Number(pr.value ?? 1));
+    else if (move === "drift") vx = speed * dir;
+    else if (move === "bounce") { vx = speed * dir; vy = speed * 0.7; }
+    else if (move === "patrol") vx = speed * dir;
+    else if (move === "wave") { vy = speed * 0.5; vx = speed * dir; }
+    // Több darab: szétterítve jelenik meg, kis véletlen eltolással
+    let e: Entity | undefined;
+    for (let i = 0; i < count; i++) {
+      const spread = count > 1 ? (i / (count - 1) - 0.5) * 72 : 0;
+      const jitter = count > 1 ? (Math.random() - 0.5) * 6 : 0;
+      e = this.spawn({
+        kind: "shape", role, style, move, speed,
+        x: Math.max(-8, Math.min(108, x + spread + jitter)),
+        y: y + (count > 1 ? (Math.random() - 0.5) * 8 : 0),
+        vx, vy,
+        size: Number(pr.size ?? 30),
+        w: Number(pr.size ?? 30) * 1.6,
+        h: Number(pr.height ?? 26),
+        value: Number(pr.value ?? 5),
+        color: String(pr.color ?? "#fbbf24"),
+        alpha, spin,
+        sticky, life: sticky ? null : opts.life,
+        srcId: opts.srcId,
+      });
+    }
+    const ent = e!;
+    if (role === "pickup" && style === "heart") ent.value = Math.max(1, Number(pr.value ?? 1));
     const roleLabel = role === "player" ? "Játékos" : role === "enemy" ? "Ellenség" : role === "pickup" ? "Gyűjtendő" : role === "platform" ? "Akadály" : "Dísz";
-    this.emit(step, `${label} (${roleLabel.toLowerCase()}, ${move})`, role === "platform" ? "logic" : "gfx");
-    return e;
+    const countLabel = count > 1 ? ` ×${count}` : "";
+    this.emit(step, `${label}${countLabel} (${roleLabel.toLowerCase()}, ${move})`, role === "platform" ? "logic" : "gfx");
+    return ent;
   }
 
   private getPlayer(): Entity | undefined {
@@ -435,9 +458,21 @@ export class RuntimeEngine {
   };
 
   private fireStep(step: number, p: Project) {
+    // A Szóló csak a hangokat némítja el – a grafika és a logika tovább fut
     const anySolo = p.tracks.some((t) => t.solo);
+    const audioTrackIds = new Set<string>();
+    for (const b of p.blocks) {
+      let isAudio = false;
+      if (b.typeId.startsWith("custom:")) {
+        isAudio = this.findAsset(p, b.typeId.slice(7))?.kind === "audio";
+      } else {
+        const k = getBlockType(b.typeId)?.kind;
+        isAudio = k === "sfx" || k === "music";
+      }
+      if (isAudio) audioTrackIds.add(b.trackId);
+    }
     for (const track of p.tracks) {
-      const muted = track.muted || (anySolo && !track.solo);
+      const muted = track.muted || (anySolo && audioTrackIds.has(track.id) && !track.solo);
       if (muted) continue;
       for (const b of p.blocks) {
         if (b.trackId !== track.id || b.start !== step) continue;
@@ -464,23 +499,41 @@ export class RuntimeEngine {
     return img.complete && img.naturalWidth > 0 ? img : undefined;
   }
 
+  // A blokk paramétereinek összeolvasztása a blokktípus alapértelmezéseivel:
+  // így a régebben mentett projektek és a demók is megkapják az új paramétereket.
+  private mergedParams(b: Block): Record<string, string | number | boolean> {
+    const def = getBlockType(b.typeId);
+    if (!def) return b.params;
+    const out: Record<string, string | number | boolean> = { ...b.params };
+    for (const pd of def.params) {
+      if (out[pd.key] === undefined) out[pd.key] = pd.default;
+    }
+    return out;
+  }
+
   private applyBlock(b: Block, track: Track, p: Project) {
     const isCustom = b.typeId.startsWith("custom:");
     const def = getBlockType(b.typeId);
     const assetId = isCustom ? b.typeId.slice(7) : undefined;
     const asset = assetId ? this.findAsset(p, assetId) : undefined;
     const kind = isCustom ? (asset?.kind === "audio" ? "customAudio" : "customImage") : def?.kind;
-    const pr = b.params;
+    const pr = this.mergedParams(b);
     const vol = track.volume;
 
     switch (kind) {
       case "bg": {
+        const dim = Math.max(0, Math.min(0.8, Number(pr.dim ?? 0) / 100));
         if (b.typeId === "gfx.bg.preset") {
-          this.bg = { type: "preset", preset: String(pr.preset ?? "space") };
-          this.emit(b.start, `Háttér: ${String(pr.preset)}`, "gfx");
+          this.bg = { type: "preset", preset: String(pr.preset ?? "space"), dim };
+          this.emit(b.start, `Háttér: ${String(pr.preset)}${dim > 0 ? ` (sötétítés ${Math.round(dim * 100)}%)` : ""}`, "gfx");
         } else {
-          this.bg = { type: "color", color: String(pr.color ?? "#1e1b4b") };
-          this.emit(b.start, "Háttérszín beállítva", "gfx");
+          this.bg = {
+            type: "color",
+            color: String(pr.color ?? "#1e1b4b"),
+            color2: Boolean(pr.gradient) ? String(pr.color2 ?? "#0ea5e9") : undefined,
+            dim,
+          };
+          this.emit(b.start, `Háttérszín beállítva${Boolean(pr.gradient) ? " (átmenettel)" : ""}`, "gfx");
         }
         break;
       }
@@ -536,6 +589,8 @@ export class RuntimeEngine {
           x: Number(pr.x ?? 50), y: Number(pr.y ?? 20),
           text: String(pr.text ?? "Szöveg"), fontSize: Number(pr.size ?? 28),
           color: String(pr.color ?? "#ffffff"),
+          align: String(pr.align ?? "center"),
+          fade: Boolean(pr.fade ?? false),
           sticky: Boolean(pr.sticky), life: pr.sticky ? null : b.length * p.tempoMs + 400,
           size: Number(pr.size ?? 28),
           srcId: b.id,
@@ -545,7 +600,7 @@ export class RuntimeEngine {
       }
       case "effect": {
         if (b.typeId === "gfx.effect.explosion") {
-          this.burst((Number(pr.x) / 100) * W, (Number(pr.y) / 100) * H, Number(pr.count ?? 26), String(pr.color ?? "#fb923c"));
+          this.burst((Number(pr.x) / 100) * W, (Number(pr.y) / 100) * H, Number(pr.count ?? 26), String(pr.color ?? "#fb923c"), Number(pr.power ?? 180));
         } else if (b.typeId === "gfx.effect.flash") {
           this.flash = { color: String(pr.color ?? "#ffffff"), t: Number(pr.strength ?? 60) / 100 };
         } else if (b.typeId === "gfx.effect.fireworks") {
@@ -595,13 +650,23 @@ export class RuntimeEngine {
         break;
       }
       case "sfx": {
-        audioEngine.playSfx(b.typeId, Number(pr.volume ?? 70) / 100, vol);
-        this.emit(b.start, `Hang: ${def?.label ?? b.typeId}`, "sfx");
+        if (Boolean(pr.mute)) {
+          this.emit(b.start, `Hang lenémítva: ${def?.label ?? b.typeId}`, "sfx");
+          break;
+        }
+        const rate = Math.max(0.25, Math.min(4, Number(pr.speed ?? 100) / 100));
+        audioEngine.playSfx(b.typeId, Number(pr.volume ?? 70) / 100, vol, rate);
+        this.emit(b.start, `Hang: ${def?.label ?? b.typeId}${rate !== 1 ? ` (${Math.round(rate * 100)}% sebesség)` : ""}`, "sfx");
         break;
       }
       case "music": {
-        audioEngine.playMusic(b.typeId, pr, b.length, p.tempoMs, Number(pr.volume ?? 70) / 100, vol);
-        this.emit(b.start, `Zene: ${def?.label ?? b.typeId} (${b.length} lépés)`, "sfx");
+        if (Boolean(pr.mute)) {
+          this.emit(b.start, `Zene lenémítva: ${def?.label ?? b.typeId}`, "sfx");
+          break;
+        }
+        const mrate = Math.max(0.25, Math.min(4, Number(pr.speed ?? 100) / 100));
+        audioEngine.playMusic(b.typeId, pr, b.length, p.tempoMs, Number(pr.volume ?? 70) / 100, vol, mrate);
+        this.emit(b.start, `Zene: ${def?.label ?? b.typeId} (${b.length} lépés${mrate !== 1 ? `, ${Math.round(mrate * 100)}% sebesség` : ""})`, "sfx");
         break;
       }
       case "keyboard": {
@@ -671,6 +736,10 @@ export class RuntimeEngine {
             color: String(pr.color ?? "#9ca3af"),
             value: Number(pr.value ?? 5),
             randomX: Boolean(pr.randomX ?? true),
+            dir: String(pr.direction ?? "right") === "left" ? -1 : 1,
+            alpha: pr.opacity === undefined ? 1 : Math.max(0.05, Math.min(1, Number(pr.opacity) / 100)),
+            spin: Boolean(pr.spin ?? false),
+            count: Math.max(1, Math.min(6, Math.round(Number(pr.count ?? 1)))),
           },
         });
         this.emit(b.start, `Rendszeres megjelenítés aktív: ${pr.style} minden ${pr.every}. lépésben (${b.length} lépésen át)`, "logic");
@@ -808,6 +877,7 @@ export class RuntimeEngine {
             h: Number(pr.height ?? 30),
             value: Number(pr.value ?? 5),
             image: img,
+            alpha: pr.opacity === undefined ? 1 : Math.max(0.05, Math.min(1, Number(pr.opacity) / 100)),
             sticky, life: sticky ? null : b.length * p.tempoMs + 400,
             srcId: b.id,
           });
@@ -817,8 +887,10 @@ export class RuntimeEngine {
       }
       case "customAudio": {
         if (!asset) { this.emit(b.start, "Hiányzó feltöltött hang", "warn"); break; }
-        audioEngine.playDataUrl(asset.dataUrl, Number(pr.volume ?? 80) / 100);
-        this.emit(b.start, `Saját hang: ${asset.name}`, "sfx");
+        if (Boolean(pr.mute)) { this.emit(b.start, `Saját hang lenémítva: ${asset.name}`, "sfx"); break; }
+        const crate = Math.max(0.25, Math.min(4, Number(pr.speed ?? 100) / 100));
+        audioEngine.playDataUrl(asset.dataUrl, Number(pr.volume ?? 80) / 100, crate);
+        this.emit(b.start, `Saját hang: ${asset.name}${crate !== 1 ? ` (${Math.round(crate * 100)}% sebesség)` : ""}`, "sfx");
         break;
       }
     }
@@ -914,17 +986,23 @@ export class RuntimeEngine {
         let vx = 0, vy = 0;
         if (move === "fall") vy = s.speed;
         else if (move === "rise") vy = -s.speed;
-        else if (move === "drift") vx = s.speed;
-        else if (move === "bounce") { vx = s.speed; vy = s.speed * 0.7; }
-        else if (move === "patrol") vx = s.speed;
-        else if (move === "wave") { vy = s.speed * 0.5; vx = s.speed; }
-        this.spawn({
-          kind: "shape", role: roleRaw as Role, style: s.style, move, speed: s.speed,
-          x: s.randomX ? 6 + Math.random() * 88 : 50,
-          y: move === "fall" ? -6 : move === "rise" ? 105 : 50,
-          vx, vy, size: s.size, w: s.size * 1.6, h: 26, value: s.value, color: s.color,
-          sticky: false, life: move === "static" || move === "orbit" || move === "patrol" || move === "bounce" ? 14000 : null,
-        });
+        else if (move === "drift") vx = s.speed * s.dir;
+        else if (move === "bounce") { vx = s.speed * s.dir; vy = s.speed * 0.7; }
+        else if (move === "patrol") vx = s.speed * s.dir;
+        else if (move === "wave") { vy = s.speed * 0.5; vx = s.speed * s.dir; }
+        const baseX = s.randomX ? 6 + Math.random() * 88 : 50;
+        const baseY = move === "fall" ? -6 : move === "rise" ? 105 : 50;
+        for (let i = 0; i < s.count; i++) {
+          const spread = s.count > 1 ? (i / (s.count - 1) - 0.5) * 60 : 0;
+          this.spawn({
+            kind: "shape", role: roleRaw as Role, style: s.style, move, speed: s.speed,
+            x: Math.max(-8, Math.min(108, baseX + spread + (Math.random() - 0.5) * 4)),
+            y: baseY + (s.count > 1 ? (Math.random() - 0.5) * 6 : 0),
+            vx, vy, size: s.size, w: s.size * 1.6, h: 26, value: s.value, color: s.color,
+            alpha: s.alpha, spin: s.spin,
+            sticky: false, life: move === "static" || move === "orbit" || move === "patrol" || move === "bounce" ? 14000 : null,
+          });
+        }
         sp.nextAt += sp.everyMs;
       }
     }
@@ -1136,6 +1214,8 @@ export class RuntimeEngine {
       const y = (e.y / 100) * H;
       ctx.save();
       ctx.translate(x, y);
+      // Átlátszóság és beúszás kezelése
+      this.applyEntityAlpha(ctx, e, now);
       switch (e.kind) {
         case "ship":
           this.drawShip(ctx, e);
@@ -1151,7 +1231,7 @@ export class RuntimeEngine {
           break;
         case "text":
           ctx.font = `700 ${e.fontSize ?? 28}px Geist, system-ui, sans-serif`;
-          ctx.textAlign = "center";
+          ctx.textAlign = e.align === "left" ? "left" : e.align === "right" ? "right" : "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = e.color;
           ctx.shadowColor = e.color;
@@ -1262,6 +1342,14 @@ export class RuntimeEngine {
   }
 
   // ---------- Általános alak rajzoló (31 stílus) ----------
+  // Entitás átlátszóság + beúszás alkalmazása (a drawShape klasszikus ágai is használják,
+  // mert ott a ctx.restore() után újra kell állítani)
+  private applyEntityAlpha(ctx: CanvasRenderingContext2D, e: Entity, now: number) {
+    let a = e.alpha;
+    if (e.fade) a *= Math.min(1, (now - e.bornAt) / 500);
+    if (a < 1) ctx.globalAlpha = Math.max(0.03, a);
+  }
+
   private drawShape(ctx: CanvasRenderingContext2D, e: Entity, now: number) {
     const s = e.size;
     const c = e.color;
@@ -1274,24 +1362,28 @@ export class RuntimeEngine {
         ctx.restore();
         ctx.save();
         ctx.translate((e.x / 100) * W, (e.y / 100) * H);
+        this.applyEntityAlpha(ctx, e, now);
         this.drawShip(ctx, e);
         break;
       case "meteor":
         ctx.restore();
         ctx.save();
         ctx.translate((e.x / 100) * W, (e.y / 100) * H);
+        this.applyEntityAlpha(ctx, e, now);
         this.drawMeteor(ctx, e);
         break;
       case "star":
         ctx.restore();
         ctx.save();
         ctx.translate((e.x / 100) * W, (e.y / 100) * H);
+        this.applyEntityAlpha(ctx, e, now);
         this.drawStar(ctx, e, now);
         break;
       case "cloud":
         ctx.restore();
         ctx.save();
         ctx.translate((e.x / 100) * W, (e.y / 100) * H);
+        this.applyEntityAlpha(ctx, e, now);
         this.drawCloud(ctx, e);
         break;
       case "ball": {
@@ -1819,7 +1911,9 @@ export class RuntimeEngine {
 
   private drawCloud(ctx: CanvasRenderingContext2D, e: Entity) {
     const s = e.size;
-    ctx.globalAlpha = 0.75;
+    // A felhő alapból kicsit áttetsző – az entitás átlátszóságát megszorozzuk, nem felülírjuk
+    ctx.save();
+    ctx.globalAlpha = ctx.globalAlpha * 0.75;
     ctx.fillStyle = e.color;
     ctx.shadowColor = e.color;
     ctx.shadowBlur = 18;
@@ -1828,7 +1922,7 @@ export class RuntimeEngine {
     ctx.arc(0, -s / 6, s / 2.4, 0, Math.PI * 2);
     ctx.arc(s / 3, 0, s / 3.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   private drawHud(ctx: CanvasRenderingContext2D) {
@@ -1864,10 +1958,26 @@ export class RuntimeEngine {
   }
 
   private drawBg(ctx: CanvasRenderingContext2D, now: number) {
+    this.drawBgBase(ctx, now);
+    // Sötétítés: a sprite-ok és feliratok így előreugranak
+    if (this.bg.dim && this.bg.dim > 0) {
+      ctx.globalAlpha = this.bg.dim;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  private drawBgBase(ctx: CanvasRenderingContext2D, now: number) {
     if (this.bg.type === "color" && this.bg.color) {
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, this.shade(this.bg.color, 18));
-      grad.addColorStop(1, this.bg.color);
+      if (this.bg.color2) {
+        grad.addColorStop(0, this.bg.color);
+        grad.addColorStop(1, this.bg.color2);
+      } else {
+        grad.addColorStop(0, this.shade(this.bg.color, 18));
+        grad.addColorStop(1, this.bg.color);
+      }
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       return;

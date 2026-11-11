@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { BLOCK_TYPES, CATEGORY_ORDER } from "@/lib/blocks";
-import { CATEGORY_META, type Category } from "@/lib/types";
+import { CATEGORY_META, type Category, type CustomAsset } from "@/lib/types";
 import { useEditor, processImageFile, processAudioFile } from "@/store/editor";
 import { useDrag } from "@/store/drag";
 import { blockIcon } from "./icons";
@@ -25,8 +25,8 @@ export function Library() {
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
-    const added = [];
-    const errors = [];
+    const added: CustomAsset[] = [];
+    const errors: string[] = [];
     for (const file of Array.from(files)) {
       try {
         if (file.type.startsWith("image/")) {

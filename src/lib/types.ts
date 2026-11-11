@@ -22,6 +22,7 @@ export interface BlockParamDef {
   step?: number;
   options?: { value: string; label: string }[];
   default: string | number | boolean;
+  group?: string; // csoport-cím a tulajdonságpanelen (pl. "Megjelenés", "Mozgás")
 }
 
 // A motor által kezelt "fajták"

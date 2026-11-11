@@ -44,23 +44,26 @@ export class AudioEngine {
   }
 
   // ---------- Hanghatások ----------
-  playSfx(kind: string, volume01: number, trackVol = 1) {
+  // rate: lejátszási sebesség szorzó (1 = normál). A frekvenciák arányosan
+  // tolódnak, az időtartamok rövidülnek/hosszabbodnak – mint egy minta gyorsítása.
+  playSfx(kind: string, volume01: number, trackVol = 1, rate = 1) {
     const ctx = this.ensureContext();
     if (!ctx || !this.master) return;
     const v = Math.max(0, Math.min(1, volume01)) * Math.max(0, Math.min(1, trackVol));
     if (v <= 0.001) return;
+    const r = Math.max(0.25, Math.min(4, rate));
     const t = ctx.currentTime;
     switch (kind) {
       case "sfx.laser": {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "square";
-        o.frequency.setValueAtTime(920, t);
-        o.frequency.exponentialRampToValueAtTime(120, t + 0.22);
+        o.frequency.setValueAtTime(920 * r, t);
+        o.frequency.exponentialRampToValueAtTime(120 * r, t + 0.22 / r);
         g.gain.setValueAtTime(0.16 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.26);
+        o.start(t); o.stop(t + 0.26 / r);
         break;
       }
       case "sfx.explosion": {
@@ -68,22 +71,22 @@ export class AudioEngine {
         src.buffer = this.getNoise(ctx);
         const f = ctx.createBiquadFilter();
         f.type = "lowpass";
-        f.frequency.setValueAtTime(1100, t);
-        f.frequency.exponentialRampToValueAtTime(60, t + 0.55);
+        f.frequency.setValueAtTime(1100 * r, t);
+        f.frequency.exponentialRampToValueAtTime(60 * r, t + 0.55 / r);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.5 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6 / r);
         src.connect(f).connect(g).connect(this.master);
-        src.start(t); src.stop(t + 0.65);
+        src.start(t); src.stop(t + 0.65 / r);
         const o = ctx.createOscillator();
         const og = ctx.createGain();
         o.type = "sine";
-        o.frequency.setValueAtTime(120, t);
-        o.frequency.exponentialRampToValueAtTime(35, t + 0.4);
+        o.frequency.setValueAtTime(120 * r, t);
+        o.frequency.exponentialRampToValueAtTime(35 * r, t + 0.4 / r);
         og.gain.setValueAtTime(0.4 * v, t);
-        og.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + 0.45 / r);
         o.connect(og).connect(this.master);
-        o.start(t); o.stop(t + 0.5);
+        o.start(t); o.stop(t + 0.5 / r);
         break;
       }
       case "sfx.coin": {
@@ -91,13 +94,13 @@ export class AudioEngine {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = "sine";
-          const st = t + i * 0.085;
-          o.frequency.setValueAtTime(freq, st);
+          const st = t + (i * 0.085) / r;
+          o.frequency.setValueAtTime(freq * r, st);
           g.gain.setValueAtTime(0.0001, st);
-          g.gain.linearRampToValueAtTime(0.22 * v, st + 0.012);
-          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.22);
+          g.gain.linearRampToValueAtTime(0.22 * v, st + 0.012 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.22 / r);
           o.connect(g).connect(this.master!);
-          o.start(st); o.stop(st + 0.24);
+          o.start(st); o.stop(st + 0.24 / r);
         });
         break;
       }
@@ -105,11 +108,11 @@ export class AudioEngine {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "triangle";
-        o.frequency.setValueAtTime(520, t);
+        o.frequency.setValueAtTime(520 * r, t);
         g.gain.setValueAtTime(0.18 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.14);
+        o.start(t); o.stop(t + 0.14 / r);
         break;
       }
       case "sfx.swoosh": {
@@ -118,14 +121,14 @@ export class AudioEngine {
         const f = ctx.createBiquadFilter();
         f.type = "bandpass";
         f.Q.value = 1.1;
-        f.frequency.setValueAtTime(300, t);
-        f.frequency.exponentialRampToValueAtTime(2400, t + 0.35);
+        f.frequency.setValueAtTime(300 * r, t);
+        f.frequency.exponentialRampToValueAtTime(2400 * r, t + 0.35 / r);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.16 * v, t + 0.12);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        g.gain.linearRampToValueAtTime(0.16 * v, t + 0.12 / r);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4 / r);
         src.connect(f).connect(g).connect(this.master);
-        src.start(t); src.stop(t + 0.45);
+        src.start(t); src.stop(t + 0.45 / r);
         break;
       }
       case "sfx.alarm": {
@@ -133,14 +136,14 @@ export class AudioEngine {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = "square";
-          const st = t + i * 0.3;
-          o.frequency.setValueAtTime(i % 2 === 0 ? 620 : 460, st);
+          const st = t + (i * 0.3) / r;
+          o.frequency.setValueAtTime((i % 2 === 0 ? 620 : 460) * r, st);
           g.gain.setValueAtTime(0.0001, st);
-          g.gain.linearRampToValueAtTime(0.1 * v, st + 0.03);
-          g.gain.setValueAtTime(0.1 * v, st + 0.2);
-          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.26);
+          g.gain.linearRampToValueAtTime(0.1 * v, st + 0.03 / r);
+          g.gain.setValueAtTime(0.1 * v, st + 0.2 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.26 / r);
           o.connect(g).connect(this.master!);
-          o.start(st); o.stop(st + 0.3);
+          o.start(st); o.stop(st + 0.3 / r);
         }
         break;
       }
@@ -148,12 +151,12 @@ export class AudioEngine {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "sine";
-        o.frequency.setValueAtTime(220, t);
-        o.frequency.exponentialRampToValueAtTime(680, t + 0.16);
+        o.frequency.setValueAtTime(220 * r, t);
+        o.frequency.exponentialRampToValueAtTime(680 * r, t + 0.16 / r);
         g.gain.setValueAtTime(0.2 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.22);
+        o.start(t); o.stop(t + 0.22 / r);
         break;
       }
       case "sfx.powerup": {
@@ -161,13 +164,13 @@ export class AudioEngine {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = "square";
-          const st = t + i * 0.07;
-          o.frequency.setValueAtTime(freq, st);
+          const st = t + (i * 0.07) / r;
+          o.frequency.setValueAtTime(freq * r, st);
           g.gain.setValueAtTime(0.0001, st);
-          g.gain.linearRampToValueAtTime(0.14 * v, st + 0.01);
-          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.16);
+          g.gain.linearRampToValueAtTime(0.14 * v, st + 0.01 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.16 / r);
           o.connect(g).connect(this.master!);
-          o.start(st); o.stop(st + 0.18);
+          o.start(st); o.stop(st + 0.18 / r);
         });
         break;
       }
@@ -175,12 +178,12 @@ export class AudioEngine {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "sawtooth";
-        o.frequency.setValueAtTime(190, t);
-        o.frequency.exponentialRampToValueAtTime(70, t + 0.2);
+        o.frequency.setValueAtTime(190 * r, t);
+        o.frequency.exponentialRampToValueAtTime(70 * r, t + 0.2 / r);
         g.gain.setValueAtTime(0.2 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.26);
+        o.start(t); o.stop(t + 0.26 / r);
         break;
       }
       case "sfx.win": {
@@ -188,14 +191,14 @@ export class AudioEngine {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = "triangle";
-          const st = t + i * 0.14;
-          const dur = i === 3 ? 0.5 : 0.18;
-          o.frequency.setValueAtTime(freq, st);
+          const st = t + (i * 0.14) / r;
+          const dur = (i === 3 ? 0.5 : 0.18) / r;
+          o.frequency.setValueAtTime(freq * r, st);
           g.gain.setValueAtTime(0.0001, st);
-          g.gain.linearRampToValueAtTime(0.18 * v, st + 0.02);
+          g.gain.linearRampToValueAtTime(0.18 * v, st + 0.02 / r);
           g.gain.exponentialRampToValueAtTime(0.0001, st + dur);
           o.connect(g).connect(this.master!);
-          o.start(st); o.stop(st + dur + 0.05);
+          o.start(st); o.stop(st + dur + 0.05 / r);
         });
         break;
       }
@@ -204,13 +207,13 @@ export class AudioEngine {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = "triangle";
-          const st = t + i * 0.22;
-          o.frequency.setValueAtTime(freq, st);
+          const st = t + (i * 0.22) / r;
+          o.frequency.setValueAtTime(freq * r, st);
           g.gain.setValueAtTime(0.0001, st);
-          g.gain.linearRampToValueAtTime(0.16 * v, st + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.3);
+          g.gain.linearRampToValueAtTime(0.16 * v, st + 0.02 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.3 / r);
           o.connect(g).connect(this.master!);
-          o.start(st); o.stop(st + 0.34);
+          o.start(st); o.stop(st + 0.34 / r);
         });
         break;
       }
@@ -218,23 +221,23 @@ export class AudioEngine {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "sine";
-        o.frequency.setValueAtTime(380, t);
-        o.frequency.exponentialRampToValueAtTime(120, t + 0.1);
+        o.frequency.setValueAtTime(380 * r, t);
+        o.frequency.exponentialRampToValueAtTime(120 * r, t + 0.1 / r);
         g.gain.setValueAtTime(0.24 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.14);
+        o.start(t); o.stop(t + 0.14 / r);
         break;
       }
       case "sfx.click": {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = "square";
-        o.frequency.setValueAtTime(1400, t);
+        o.frequency.setValueAtTime(1400 * r, t);
         g.gain.setValueAtTime(0.09 * v, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05 / r);
         o.connect(g).connect(this.master);
-        o.start(t); o.stop(t + 0.06);
+        o.start(t); o.stop(t + 0.06 / r);
         break;
       }
       case "sfx.thunder": {
@@ -242,14 +245,14 @@ export class AudioEngine {
         src.buffer = this.getNoise(ctx);
         const f = ctx.createBiquadFilter();
         f.type = "lowpass";
-        f.frequency.setValueAtTime(900, t);
-        f.frequency.exponentialRampToValueAtTime(50, t + 1.0);
+        f.frequency.setValueAtTime(900 * r, t);
+        f.frequency.exponentialRampToValueAtTime(50 * r, t + 1.0 / r);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.5 * v, t + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+        g.gain.linearRampToValueAtTime(0.5 * v, t + 0.05 / r);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1 / r);
         src.connect(f).connect(g).connect(this.master);
-        src.start(t); src.stop(t + 1.15);
+        src.start(t); src.stop(t + 1.15 / r);
         break;
       }
     }
@@ -264,13 +267,15 @@ export class AudioEngine {
     tempoMs: number,
     volume01: number,
     trackVol = 1,
+    rate = 1,
   ) {
     const ctx = this.ensureContext();
     if (!ctx || !this.master) return;
     const v = Math.max(0, Math.min(1, volume01)) * Math.max(0, Math.min(1, trackVol));
     if (v <= 0.001) return;
     const t0 = ctx.currentTime + 0.02;
-    const stepDur = tempoMs / 1000;
+    // Lejátszási sebesség: a lépések hossza rövidül/hosszabbodik arányosan
+    const stepDur = (tempoMs / 1000) / Math.max(0.25, Math.min(4, rate));
     const steps = Math.max(1, lengthSteps);
 
     if (typeId === "music.beat") {
@@ -499,11 +504,12 @@ export class AudioEngine {
   }
 
   // ---------- Feltöltött hang ----------
-  playDataUrl(dataUrl: string, volume01: number) {
+  playDataUrl(dataUrl: string, volume01: number, rate = 1) {
     const v = Math.max(0, Math.min(1, volume01)) * this.masterVolume;
     if (v <= 0.001) return;
     const audio = new Audio(dataUrl);
     audio.volume = v;
+    audio.playbackRate = Math.max(0.25, Math.min(4, rate));
     this.audioPool.push(audio);
     if (this.audioPool.length > 12) this.audioPool.shift();
     audio.onended = () => {

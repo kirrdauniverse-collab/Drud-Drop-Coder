@@ -57,7 +57,8 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             <ul className="space-y-1.5 text-[13px] list-disc list-inside">
               <li>Blokk mozgatása: <b>húzd</b> más cellába vagy másik sávba.</li>
               <li>Átméretezés: a blokk <b>jobb szélét</b> húzd – pl. a zenei loopok így hosszabbíthatók.</li>
-              <li>Sáv némítás/szóló: <b>M</b> és <b>S</b> gomb a sáv fejlécében, mint a zeneszerkesztőkben.</li>
+              <li>Sáv-vezérlők <b>a tartalomhoz illőek</b>: hangsávnál <b>M</b> (némítás), <b>S</b> (szóló – csak a hangokra!) és hangerőcsúszka; grafikai sávnál <b>szem ikon</b> (elrejtés); logikai/bemeneti/adat sávnál <b>kapcsoló</b> (be/ki).</li>
+              <li>Blokk-beállítások <b>csoportosítva</b>: a hangoknál hangerő, lejátszási sebesség és némítás; a sprite-oknál szín, méret, átlátszóság, pörgés, mozgás, sebesség, irány és darabszám; a háttereknél sötétítés és színátmenet.</li>
               <li>Jobb klikk a blokkon → duplikálás vagy törlés.</li>
               <li>Az <b>Ugrás</b> blokkal a léptetőfej visszazuhanhat korábbi lépésre – így csinálhatsz belső ciklust.</li>
               <li>Az <b>eseménynapló</b> (előnézet mellett) lépésenként mutatja, mit csinált a motor – hibakereséshez arany.</li>

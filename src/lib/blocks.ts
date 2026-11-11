@@ -4,17 +4,17 @@ import { SHAPE_MOVE_LABELS } from "./types";
 // ===== Előre definiált blokk-könyvtár =====
 // Minden blokk: kategória, ikon, motor-"fajta", alap hossz (lépés) és paraméterek.
 
-const num = (key: string, label: string, def: number, min: number, max: number, step = 1) =>
-  ({ key, label, type: "number" as const, default: def, min, max, step });
+const num = (key: string, label: string, def: number, min: number, max: number, step = 1, group?: string) =>
+  ({ key, label, type: "number" as const, default: def, min, max, step, group });
 
-const slide = (key: string, label: string, def: number, min: number, max: number, step = 1) =>
-  ({ key, label, type: "slider" as const, default: def, min, max, step });
+const slide = (key: string, label: string, def: number, min: number, max: number, step = 1, group?: string) =>
+  ({ key, label, type: "slider" as const, default: def, min, max, step, group });
 
-const sel = (key: string, label: string, def: string, options: { value: string; label: string }[]) =>
-  ({ key, label, type: "select" as const, default: def, options });
+const sel = (key: string, label: string, def: string, options: { value: string; label: string }[], group?: string) =>
+  ({ key, label, type: "select" as const, default: def, options, group });
 
-const txt = (key: string, label: string, def: string) =>
-  ({ key, label, type: "text" as const, default: def });
+const txt = (key: string, label: string, def: string, group?: string) =>
+  ({ key, label, type: "text" as const, default: def, group });
 
 export const SHAPE_STYLE_OPTIONS: { value: ShapeStyle; label: string }[] = [
   { value: "ship", label: "Űrhajó" },
@@ -59,26 +59,37 @@ const ROLE_OPTIONS = [
 
 const MOVE_OPTIONS = (Object.keys(SHAPE_MOVE_LABELS) as ShapeMove[]).map((m) => ({ value: m, label: SHAPE_MOVE_LABELS[m] }));
 
+const DIR_OPTIONS = [
+  { value: "right", label: "Jobbra →" },
+  { value: "left", label: "← Balra" },
+];
+
 // Az általános "Alak" blokk paraméterkészlete – a kész alakok is ezt használják
 // eltérő alapértékekkel, így mindegyik tovább szabható.
+// A paraméterek tartalomhoz illő csoportokba rendeződnek: megjelenés, szerep, mozgás, elhelyezés.
 function shapeParams(d: {
   style?: string; role?: string; move?: string; speed?: number;
   x?: number; y?: number; size?: number; color?: string;
   height?: number; value?: number; randomX?: boolean; sticky?: boolean;
+  spin?: boolean; opacity?: number; count?: number; direction?: string;
 }): BlockParamDef[] {
   return [
-    sel("style", "Stílus", d.style ?? "ball", SHAPE_STYLE_OPTIONS),
-    sel("role", "Szerep", d.role ?? "deco", ROLE_OPTIONS),
-    sel("move", "Mozgás", d.move ?? "static", MOVE_OPTIONS),
-    num("speed", "Mozgás-sebesség", d.speed ?? 60, 0, 400),
-    num("x", "X pozíció", d.x ?? 50, 0, 100),
-    num("y", "Y pozíció", d.y ?? 50, -10, 100),
-    slide("size", "Méret", d.size ?? 30, 8, 120),
-    { key: "color", label: "Szín", type: "color", default: d.color ?? "#fbbf24" },
-    num("height", "Magasság (akadálynál)", d.height ?? 26, 4, 200),
-    num("value", "Pontérték (gyűjtendő)", d.value ?? 5, 1, 100),
-    { key: "randomX", label: "Véletlen X helyen jelenjen meg", type: "toggle", default: d.randomX ?? false },
-    { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: d.sticky ?? true },
+    sel("style", "Stílus", d.style ?? "ball", SHAPE_STYLE_OPTIONS, "Megjelenés"),
+    slide("size", "Méret", d.size ?? 30, 8, 120, 1, "Megjelenés"),
+    { key: "color", label: "Szín", type: "color", default: d.color ?? "#fbbf24", group: "Megjelenés" },
+    slide("opacity", "Átlátszóság (%)", d.opacity ?? 100, 10, 100, 5, "Megjelenés"),
+    { key: "spin", label: "Pörgés (saját tengelye körül)", type: "toggle", default: d.spin ?? false, group: "Megjelenés" },
+    sel("role", "Szerep", d.role ?? "deco", ROLE_OPTIONS, "Szerep a játékban"),
+    num("value", "Pontérték (gyűjtendőknél)", d.value ?? 5, 1, 100, 1, "Szerep a játékban"),
+    num("height", "Magasság (akadálynál)", d.height ?? 26, 4, 200, 1, "Szerep a játékban"),
+    { key: "sticky", label: "Ragadós (a kompozíció végéig marad)", type: "toggle", default: d.sticky ?? true, group: "Szerep a játékban" },
+    sel("move", "Mozgás", d.move ?? "static", MOVE_OPTIONS, "Mozgás"),
+    num("speed", "Mozgás-sebesség", d.speed ?? 60, 0, 400, 5, "Mozgás"),
+    sel("direction", "Haladási irány", d.direction ?? "right", DIR_OPTIONS, "Mozgás"),
+    num("x", "X pozíció", d.x ?? 50, 0, 100, 1, "Elhelyezés"),
+    num("y", "Y pozíció", d.y ?? 50, -10, 100, 1, "Elhelyezés"),
+    { key: "randomX", label: "Véletlen X helyen jelenjen meg", type: "toggle", default: d.randomX ?? false, group: "Elhelyezés" },
+    num("count", "Mennyi jelenjen meg belőle", d.count ?? 1, 1, 12, 1, "Elhelyezés"),
   ];
 }
 
@@ -88,6 +99,25 @@ function shapeBlock(
   defaults: Parameters<typeof shapeParams>[0],
 ): BlockTypeDef {
   return { id, label, description, category: "graphics", icon, kind: "shape", defaultLength: 4, params: shapeParams(defaults) };
+}
+
+// Hang-blokkok közös, tartalomhoz illő paraméterei: hangerő, lejátszási sebesség, némítás
+function sfxParams(volume: number): BlockParamDef[] {
+  return [
+    slide("volume", "Hangerő (%)", volume, 0, 100, 5, "Hang"),
+    slide("speed", "Lejátszási sebesség (%)", 100, 25, 200, 5, "Hang"),
+    { key: "mute", label: "Némítás (nem szól lejátszáskor)", type: "toggle", default: false, group: "Hang" },
+  ];
+}
+
+// Zenei loop blokkok: mintázat + hangbeállítások
+function musicParams(volume: number, extra: BlockParamDef[] = []): BlockParamDef[] {
+  return [
+    ...extra,
+    slide("volume", "Hangerő (%)", volume, 0, 100, 5, "Hang"),
+    slide("speed", "Lejátszási sebesség (%)", 100, 50, 200, 5, "Hang"),
+    { key: "mute", label: "Némítás (nem szól lejátszáskor)", type: "toggle", default: false, group: "Hang" },
+  ];
 }
 
 export const BLOCK_TYPES: BlockTypeDef[] = [
@@ -100,22 +130,25 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Image",
     kind: "bg",
     defaultLength: 4,
-    params: [sel("preset", "Típus", "space", [
-      { value: "space", label: "Űr (csillagokkal)" },
-      { value: "sunset", label: "Naplemente" },
-      { value: "ocean", label: "Óceán" },
-      { value: "forest", label: "Erdő" },
-      { value: "neon", label: "Neon rács (synthwave)" },
-      { value: "night", label: "Éjszakai város" },
-      { value: "desert", label: "Sivatag (dűnékkel)" },
-      { value: "mountains", label: "Havas hegyek" },
-      { value: "snow", label: "Téli táj (havazás)" },
-      { value: "candy", label: "Cukorborsó világ" },
-      { value: "underwater", label: "Víz alatti világ" },
-      { value: "road", label: "Országút (futópálya)" },
-      { value: "city", label: "Város nappal" },
-      { value: "moon", label: "Holdfelszín" },
-    ])],
+    params: [
+      sel("preset", "Típus", "space", [
+        { value: "space", label: "Űr (csillagokkal)" },
+        { value: "sunset", label: "Naplemente" },
+        { value: "ocean", label: "Óceán" },
+        { value: "forest", label: "Erdő" },
+        { value: "neon", label: "Neon rács (synthwave)" },
+        { value: "night", label: "Éjszakai város" },
+        { value: "desert", label: "Sivatag (dűnékkel)" },
+        { value: "mountains", label: "Havas hegyek" },
+        { value: "snow", label: "Téli táj (havazás)" },
+        { value: "candy", label: "Cukorborsó világ" },
+        { value: "underwater", label: "Víz alatti világ" },
+        { value: "road", label: "Országút (futópálya)" },
+        { value: "city", label: "Város nappal" },
+        { value: "moon", label: "Holdfelszín" },
+      ], "Háttér"),
+      slide("dim", "Sötétítés (%) – hogy a sprite-ok előre ugorjanak", 0, 0, 80, 5, "Háttér"),
+    ],
   },
   {
     id: "gfx.bg.color",
@@ -125,69 +158,17 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Paintbrush",
     kind: "bg",
     defaultLength: 4,
-    params: [{ key: "color", label: "Szín", type: "color", default: "#1e1b4b" }],
-  },
-  {
-    id: "gfx.sprite.ship",
-    label: "Űrhajó (játékos)",
-    description: "A játékost irányító űrhajó. A Bemenet sávokon lévő blokkokkal irányítható, a lövedékek innen indulnak.",
-    category: "graphics",
-    icon: "Rocket",
-    kind: "sprite",
-    defaultLength: 4,
     params: [
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 80, 0, 100),
-      slide("size", "Méret", 34, 12, 80),
-      { key: "color", label: "Szín", type: "color", default: "#fbbf24" },
+      { key: "color", label: "Szín (fent)", type: "color", default: "#1e1b4b", group: "Háttér" },
+      { key: "gradient", label: "Átmenet fentről lefelé", type: "toggle", default: false, group: "Háttér" },
+      { key: "color2", label: "Szín lent (átmenetnél)", type: "color", default: "#0ea5e9", group: "Háttér" },
+      slide("dim", "Sötétítés (%)", 0, 0, 80, 5, "Háttér"),
     ],
   },
-  {
-    id: "gfx.sprite.meteor",
-    label: "Meteor (ellenség)",
-    description: "Lezuhanó ellenség. Ha játékost ér: életet vesztesz. Ha lövedék találja el: pontot kapsz és eltűnik.",
-    category: "graphics",
-    icon: "CircleDot",
-    kind: "sprite",
-    defaultLength: 4,
-    params: [
-      num("x", "X pozíció", 50, 0, 100),
-      num("vy", "Zuhanási sebesség", 55, 5, 300),
-      slide("size", "Méret", 26, 10, 70),
-      { key: "spin", label: "Pörgés", type: "toggle", default: true },
-    ],
-  },
-  {
-    id: "gfx.sprite.star",
-    label: "Csillag (gyűjtendő)",
-    description: "Összegyűjthető csillag: ha a játékos hozzáér, pontot ad és érmehang szól.",
-    category: "graphics",
-    icon: "Star",
-    kind: "sprite",
-    defaultLength: 4,
-    params: [
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 40, 0, 100),
-      slide("size", "Méret", 18, 8, 50),
-      num("value", "Pontérték", 5, 1, 100),
-    ],
-  },
-  {
-    id: "gfx.sprite.cloud",
-    label: "Felhő (dísz)",
-    description: "Lassan sodródó díszelem – nem ütközik semmivel, csak hangulatot ad.",
-    category: "graphics",
-    icon: "Cloud",
-    kind: "sprite",
-    defaultLength: 4,
-    params: [
-      num("x", "X pozíció", 20, 0, 100),
-      num("y", "Y pozíció", 25, 0, 100),
-      num("vx", "Vízszintes sebesség", 12, -60, 60),
-      slide("size", "Méret", 36, 12, 90),
-      { key: "color", label: "Szín", type: "color", default: "#e2e8f0" },
-    ],
-  },
+  shapeBlock("gfx.sprite.ship", "Űrhajó (játékos)", "A játékost irányító űrhajó. A Bemenet sávokon lévő blokkokkal irányítható, a lövedékek innen indulnak. Színe, mérete, sebessége és pörgése is állítható.", "Rocket", { style: "ship", role: "player", move: "static", x: 50, y: 82, size: 34, color: "#fbbf24", sticky: true }),
+  shapeBlock("gfx.sprite.meteor", "Meteor (ellenség)", "Lezuhanó ellenség. Ha játékost ér: életet vesztesz. Ha lövedék találja el: pontot kapsz és eltűnik. Zuhanási sebessége, mérete, színe, pörgése és darabszáma állítható.", "CircleDot", { style: "meteor", role: "enemy", move: "fall", speed: 55, x: 50, size: 26, color: "#9ca3af", spin: true, sticky: false }),
+  shapeBlock("gfx.sprite.star", "Csillag (gyűjtendő)", "Összegyűjthető csillag: ha a játékos hozzáér, pontot ad és érmehang szól. Pontértéke, mérete, színe állítható.", "Star", { style: "star", role: "pickup", move: "static", x: 50, y: 40, size: 18, value: 5, color: "#fde047", sticky: true }),
+  shapeBlock("gfx.sprite.cloud", "Felhő (dísz)", "Lassan sodródó díszelem – nem ütközik semmivel, csak hangulatot ad. Az irány, a sebesség és az átlátszóság is állítható.", "Cloud", { style: "cloud", role: "deco", move: "drift", speed: 12, x: 20, y: 25, size: 36, color: "#e2e8f0", sticky: true }),
   {
     id: "gfx.text",
     label: "Szöveg",
@@ -197,12 +178,18 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "text",
     defaultLength: 8,
     params: [
-      txt("text", "Szöveg", "Szia!"),
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 20, 0, 100),
-      slide("size", "Betűméret", 28, 10, 72),
-      { key: "color", label: "Szín", type: "color", default: "#ffffff" },
-      { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false },
+      txt("text", "Szöveg", "Szia!", "Tartalom"),
+      sel("align", "Igazítás", "center", [
+        { value: "center", label: "Középre" },
+        { value: "left", label: "Balra" },
+        { value: "right", label: "Jobbra" },
+      ], "Tartalom"),
+      num("x", "X pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("y", "Y pozíció", 20, 0, 100, 1, "Elhelyezés"),
+      slide("size", "Betűméret", 28, 10, 72, 1, "Megjelenés"),
+      { key: "color", label: "Szín", type: "color", default: "#ffffff", group: "Megjelenés" },
+      { key: "fade", label: "Beúszás (fokozatosan jelenik meg)", type: "toggle", default: false, group: "Megjelenés" },
+      { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false, group: "Megjelenés" },
     ],
   },
   {
@@ -214,10 +201,11 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "effect",
     defaultLength: 1,
     params: [
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 50, 0, 100),
-      num("count", "Részecskeszám", 26, 6, 90),
-      { key: "color", label: "Szín", type: "color", default: "#fb923c" },
+      num("x", "X pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("y", "Y pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("count", "Részecskeszám", 26, 6, 90, 1, "Robbanás"),
+      slide("power", "Erő (részecskék sebessége)", 180, 60, 420, 10, "Robbanás"),
+      { key: "color", label: "Szín", type: "color", default: "#fb923c", group: "Robbanás" },
     ],
   },
   {
@@ -348,7 +336,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "AudioWaveform",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 70, 0, 100)],
+    params: sfxParams(70),
   },
   {
     id: "sfx.explosion",
@@ -358,7 +346,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Bomb",
     kind: "sfx",
     defaultLength: 2,
-    params: [slide("volume", "Hangerő", 80, 0, 100)],
+    params: sfxParams(80),
   },
   {
     id: "sfx.coin",
@@ -368,7 +356,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Coins",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 70, 0, 100)],
+    params: sfxParams(70),
   },
   {
     id: "sfx.blip",
@@ -378,7 +366,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Bell",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 60, 0, 100)],
+    params: sfxParams(60),
   },
   {
     id: "sfx.swoosh",
@@ -388,7 +376,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Wind",
     kind: "sfx",
     defaultLength: 2,
-    params: [slide("volume", "Hangerő", 60, 0, 100)],
+    params: sfxParams(60),
   },
   {
     id: "sfx.alarm",
@@ -398,7 +386,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Siren",
     kind: "sfx",
     defaultLength: 4,
-    params: [slide("volume", "Hangerő", 60, 0, 100)],
+    params: sfxParams(60),
   },
   {
     id: "sfx.jump",
@@ -408,7 +396,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "ChevronsUp",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 70, 0, 100)],
+    params: sfxParams(70),
   },
   {
     id: "sfx.powerup",
@@ -418,7 +406,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "PartyPopper",
     kind: "sfx",
     defaultLength: 2,
-    params: [slide("volume", "Hangerő", 75, 0, 100)],
+    params: sfxParams(75),
   },
   {
     id: "sfx.hurt",
@@ -428,7 +416,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "HeartCrack",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 75, 0, 100)],
+    params: sfxParams(75),
   },
   {
     id: "sfx.win",
@@ -438,7 +426,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Trophy",
     kind: "sfx",
     defaultLength: 4,
-    params: [slide("volume", "Hangerő", 80, 0, 100)],
+    params: sfxParams(80),
   },
   {
     id: "sfx.gameover",
@@ -448,7 +436,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "TrendingDown",
     kind: "sfx",
     defaultLength: 4,
-    params: [slide("volume", "Hangerő", 75, 0, 100)],
+    params: sfxParams(75),
   },
   {
     id: "sfx.pop",
@@ -458,7 +446,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Circle",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 65, 0, 100)],
+    params: sfxParams(65),
   },
   {
     id: "sfx.click",
@@ -468,7 +456,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "MousePointerClick",
     kind: "sfx",
     defaultLength: 1,
-    params: [slide("volume", "Hangerő", 60, 0, 100)],
+    params: sfxParams(60),
   },
   {
     id: "sfx.thunder",
@@ -478,7 +466,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "CloudLightning",
     kind: "sfx",
     defaultLength: 3,
-    params: [slide("volume", "Hangerő", 80, 0, 100)],
+    params: sfxParams(80),
   },
   {
     id: "music.beat",
@@ -488,14 +476,13 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Drum",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(70, [
       sel("pattern", "Ritmus", "techno", [
         { value: "techno", label: "Techno (dörög)" },
         { value: "house", label: "House (laza)" },
         { value: "lounge", label: "Lounge (finom)" },
-      ]),
-      slide("volume", "Hangerő", 70, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.bass",
@@ -505,14 +492,13 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "AudioLines",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(65, [
       sel("pattern", "Mintázat", "dark", [
         { value: "dark", label: "Sötét" },
         { value: "bouncy", label: "Pattogós" },
         { value: "walk", label: "Sétáló" },
-      ]),
-      slide("volume", "Hangerő", 65, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.pad",
@@ -522,14 +508,13 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Waves",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(55, [
       sel("chord", "Akkord", "minor", [
         { value: "minor", label: "Moll (melankolikus)" },
         { value: "major", label: "Dúr (derűs)" },
         { value: "sus", label: "Szuszpendált (lebegős)" },
-      ]),
-      slide("volume", "Hangerő", 55, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.arpeggio",
@@ -539,14 +524,13 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Music4",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(60, [
       sel("scale", "Skála", "minor", [
         { value: "minor", label: "Moll" },
         { value: "major", label: "Dúr" },
         { value: "pentatonic", label: "Pentaton" },
-      ]),
-      slide("volume", "Hangerő", 60, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.rock",
@@ -556,13 +540,12 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Guitar",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(65, [
       sel("pattern", "Riff", "power", [
         { value: "power", label: "Power (kemény)" },
         { value: "punk", label: "Punk (gyors)" },
-      ]),
-      slide("volume", "Hangerő", 65, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.chip",
@@ -572,13 +555,12 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Gamepad2",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(55, [
       sel("tune", "Dallam", "adventure", [
         { value: "adventure", label: "Kaland" },
         { value: "happy", label: "Vidám" },
-      ]),
-      slide("volume", "Hangerő", 55, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.waltz",
@@ -588,13 +570,12 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Music",
     kind: "music",
     defaultLength: 8,
-    params: [
+    params: musicParams(55, [
       sel("chord", "Hangnem", "major", [
         { value: "major", label: "Dúr (derűs)" },
         { value: "minor", label: "Moll (szomorú)" },
-      ]),
-      slide("volume", "Hangerő", 55, 0, 100),
-    ],
+      ], "Minta"),
+    ]),
   },
   {
     id: "music.hiphop",
@@ -604,7 +585,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Disc3",
     kind: "music",
     defaultLength: 8,
-    params: [slide("volume", "Hangerő", 65, 0, 100)],
+    params: musicParams(65),
   },
   {
     id: "music.ambient",
@@ -614,7 +595,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     icon: "Sparkle",
     kind: "music",
     defaultLength: 8,
-    params: [slide("volume", "Hangerő", 50, 0, 100)],
+    params: musicParams(50),
   },
 
   // ---------- LOGIKA ----------
@@ -687,19 +668,23 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "spawner",
     defaultLength: 8,
     params: [
-      num("every", "Minden hányadik lépésben", 2, 1, 16),
-      sel("style", "Stílus", "meteor", SHAPE_STYLE_OPTIONS),
+      num("every", "Minden hányadik lépésben", 2, 1, 16, 1, "Ütemezés"),
+      num("count", "Mennyi jelenjen meg egyszerre", 1, 1, 6, 1, "Ütemezés"),
+      sel("style", "Stílus", "meteor", SHAPE_STYLE_OPTIONS, "Megjelenés"),
+      slide("size", "Méret", 24, 8, 90, 1, "Megjelenés"),
+      { key: "color", label: "Szín", type: "color", default: "#9ca3af", group: "Megjelenés" },
+      slide("opacity", "Átlátszóság (%)", 100, 10, 100, 5, "Megjelenés"),
+      { key: "spin", label: "Pörgés", type: "toggle", default: false, group: "Megjelenés" },
       sel("role", "Szerep", "enemy", [
         { value: "enemy", label: "Ellenség" },
         { value: "pickup", label: "Gyűjtendő (+pont)" },
         { value: "deco", label: "Díszelem" },
-      ]),
-      sel("move", "Mozgás", "fall", MOVE_OPTIONS),
-      num("speed", "Mozgás-sebesség", 80, 0, 400),
-      slide("size", "Méret", 24, 8, 90),
-      { key: "color", label: "Szín", type: "color", default: "#9ca3af" },
-      num("value", "Pontérték (gyűjtendő)", 5, 1, 100),
-      { key: "randomX", label: "Véletlen X helyen", type: "toggle", default: true },
+      ], "Szerep"),
+      num("value", "Pontérték (gyűjtendő)", 5, 1, 100, 1, "Szerep"),
+      sel("move", "Mozgás", "fall", MOVE_OPTIONS, "Mozgás"),
+      num("speed", "Mozgás-sebesség", 80, 0, 400, 5, "Mozgás"),
+      sel("direction", "Haladási irány", "right", DIR_OPTIONS, "Mozgás"),
+      { key: "randomX", label: "Véletlen X helyen", type: "toggle", default: true, group: "Elhelyezés" },
     ],
   },
   {
@@ -790,7 +775,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     params: [
       sel("mode", "Mód", "shoot", [
         { value: "shoot", label: "Lövés a kattintás pontjára" },
-        { value: "star", label: "Csillag appears a kattintásnál" },
+        { value: "star", label: "Csillag jelenik meg a kattintásnál" },
         { value: "meteor", label: "Meteor hullik a kattintásnál" },
       ]),
     ],
@@ -821,12 +806,13 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "text",
     defaultLength: 6,
     params: [
-      txt("text", "Szöveg", "Szia, jó játék ez!"),
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 30, 0, 100),
-      slide("size", "Betűméret", 20, 10, 48),
-      { key: "color", label: "Szín", type: "color", default: "#f5f5f4" },
-      { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false },
+      txt("text", "Szöveg", "Szia, jó játék ez!", "Tartalom"),
+      num("x", "X pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("y", "Y pozíció", 30, 0, 100, 1, "Elhelyezés"),
+      slide("size", "Betűméret", 20, 10, 48, 1, "Megjelenés"),
+      { key: "color", label: "Szín", type: "color", default: "#f5f5f4", group: "Megjelenés" },
+      { key: "fade", label: "Beúszás (fokozatosan jelenik meg)", type: "toggle", default: false, group: "Megjelenés" },
+      { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false, group: "Megjelenés" },
     ],
   },
 
@@ -899,15 +885,16 @@ export function customImageTypeDef(assetName: string): BlockTypeDef {
         { value: "pickup", label: "Gyűjtendő (+pont)" },
         { value: "platform", label: "Akadály / platform" },
         { value: "bg", label: "Háttérkép" },
-      ]),
-      num("x", "X pozíció", 50, 0, 100),
-      num("y", "Y pozíció", 50, 0, 100),
-      num("vx", "Vízszintes sebesség", 0, -200, 200),
-      num("vy", "Függőleges sebesség", 0, -200, 200),
-      slide("size", "Méret", 40, 8, 120),
-      num("height", "Magasság (akadálynál)", 30, 4, 200),
-      num("value", "Pontérték (gyűjtendő)", 5, 1, 100),
-      { key: "sticky", label: "Ragadós", type: "toggle", default: true },
+      ], "Szerep"),
+      num("value", "Pontérték (gyűjtendő)", 5, 1, 100, 1, "Szerep"),
+      { key: "sticky", label: "Ragadós", type: "toggle", default: true, group: "Szerep" },
+      num("x", "X pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("y", "Y pozíció", 50, 0, 100, 1, "Elhelyezés"),
+      num("vx", "Vízszintes sebesség", 0, -200, 200, 5, "Mozgás"),
+      num("vy", "Függőleges sebesség", 0, -200, 200, 5, "Mozgás"),
+      slide("size", "Méret", 40, 8, 120, 1, "Megjelenés"),
+      slide("opacity", "Átlátszóság (%)", 100, 10, 100, 5, "Megjelenés"),
+      num("height", "Magasság (akadálynál)", 30, 4, 200, 1, "Megjelenés"),
     ],
   };
 }
@@ -921,7 +908,7 @@ export function customAudioTypeDef(assetName: string): BlockTypeDef {
     icon: "FileAudio",
     kind: "customAudio",
     defaultLength: 4,
-    params: [slide("volume", "Hangerő", 80, 0, 100)],
+    params: sfxParams(80),
   };
 }
 

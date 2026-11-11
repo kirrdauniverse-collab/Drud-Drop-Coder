@@ -23,18 +23,26 @@ Ahogy a zeneszerkesztőkben a hangmintákat teszed az idővonalra, itt **blokkok
 
 ## Fő funkciók
 
-- **🎛️ Blokk-könyvtár** – 28 előre definiált blokk 5 kategóriában:
-  - *Grafika*: animált háttérképek (űr, óceán, neon…), űrhajó, meteor, csillag, felhő, szöveg, robbanás, tűzijáték
-  - *Hang*: lézer, robbanás, érme, sziréna + szintetizált dob-, basszus-, akkord- és arpeggio-loopok
-  - *Logika*: számláló, feltételvizsgálat, ugrás (ciklusok!), véletlen esemény, takarítás
-  - *Bemenet*: billentyű-irányítás (WASD/nyilak + lövés), kattintás-események
+- **🎛️ Blokk-könyvtár** – több száz választható elem 7 kategóriában:
+  - *Grafika*: 14 animált háttér + szín/átmenet háttér, az **Alak (szabadon)** blokk 31 stílusa × 5 szerepe × 9 mozgása, kész alakok (űrhajó, meteor, szellem, autó, érme, lufi…), szöveg, robbanás, tűzijáték, eső/hó/villámlás
+  - *Hang*: 14 szintetizált hanghatás + 9 zenei loop (techno, rock, chiptune, keringő, hip-hop, ambient…)
+  - *Logika*: számláló, feltételvizsgálat, ugrás (ciklusok!), véletlen esemény, rendszeres megjelenítés, takarítás, győzelem/játék vége
+  - *Bemenet*: billentyű-irányítás (szabad / ugrálós platformer / vízszintes), egérkövetés, kattintás-események
+  - *App*: választó gombok (kvízek, menük), beszédbuborék
   - *Adat*: változók, életek, mentés/betöltés
-- **🎚️ Sok folyamat-sáv** – korlátlan sáv, mindegyik saját hangerővel, mute/solo-val, kategória-színnel
+  - *Saját*: feltöltött képek és hangok szintén blokkmá alakítva
+- **🎚️ Tartalomhez illő blokk-beállítások** – minden blokktípusnak **saját, hasznos** paraméterkészlete van, csoportosítva:
+  - *Sprite / Alak* → Megjelenés (stílus, méret, szín, **átlátszóság**, pörgés) · Szerep (játékos/ellenség/gyűjtendő/dísz/platform, pontérték) · Mozgás (zuhan/emelkedik/sodródik/pattog/üldöz/kering/hullám, **sebesség**, **haladási irány**) · Elhelyezés (X, Y, véletlen hely, **mennyi jelenjen meg egyszerre**)
+  - *Zene és hang* → **hangerő**, **lejátszási sebesség** (25–200%, a loop ténylegesen gyorsul/lassul!), **némítás** (a blokk a helyén marad, de nem szól)
+  - *Háttér* → kész színtér vagy szín + **színátmenet** fentről lefelé + **sötétítés** (hogy a sprite-ok előre ugorjanak)
+  - *Szöveg* → igazítás (bal/közép/jobb), **beúszás** (fokozatos megjelenés), ragadós mód
+  - *Robbanás* → részecskeszám, **erő** (részecske-sebesség), szín
+- **🎚️ Sok folyamat-sáv** – korlátlan sáv, **kategóriának megfelelő vezérlőkkel**: hangsávnál hangerő + némítás (M) + szóló (S), grafikai sávnál elrejtés (szem ikon), logikai/bemeneti/adat sávnál be/ki kapcsoló. A szóló csak a hangokat némítja el – a kép tovább fut!
 - **🖱️ Drag & drop** – blokkok húzása a könyvtárból és a sávok között, átméretezés húzással
-- **🖼️ Saját tartalmak** – kép (PNG/JPG/SVG) és hang (MP3/WAV/OGG) feltöltés; a feltöltött kép lehet dísz, játékos, ellenség, gyűjtendő vagy háttér
+- **🖼️ Saját tartalmak** – kép (PNG/JPG/SVG) és hang (MP3/WAV/OGG) feltöltés; a feltöltött kép lehet dísz, játékos, ellenség, gyűjtendő vagy háttér, a hang hangerővel és lejátszási sebességgel
 - **▶️ Élő lejátszó** – léptetőfejes futtatás, canvas előnézet, eseménynapló, pont/élet HUD
 - **🧠 Vezérlés** – feltételekkel és ugrásokkal igazi játékmenetet építhetsz (pl. „ha pont ≥ 50 → új szint")
-- **💾 Projektkezelés** – mentés böngészőbe, felhő-gyűjtemény (API), undo/redo
+- **💾 Projektkezelés** – mentés böngészőbe, felhő-gyűjtemény (API), undo/redo; a régebben mentett projektek automatikusan megkapják az új paramétereket
 - **📱 Reszponzív** – mobilon panel-tabokkal
 
 ## Gyors kezdés

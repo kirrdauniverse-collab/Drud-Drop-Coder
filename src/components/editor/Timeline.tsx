@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Volume2 } from "lucide-react";
+import { Plus, Volume2, Eye, EyeOff, Power } from "lucide-react";
 
 const CELL_W = 56;
 const ROW_H = 52;
@@ -122,8 +122,12 @@ export function Timeline() {
           <div ref={gridRef}>
             {project.tracks.map((track) => {
             const meta = CATEGORY_META[track.category];
-            const effMuted = track.muted || (anySolo && !track.solo);
+            const effMuted = track.muted || (anySolo && !track.solo && (track.category === "sound" || track.category === "custom"));
             const isDragRow = dragActive && dragOver?.trackId === track.id;
+            // A sáv-fejléc vezérlői a tartalomhoz illők: hangnál hangerő/némítás/szóló,
+            // grafikánál láthatóság, logikánál pedig be/ki kapcsoló.
+            const isAudioTrack = track.category === "sound" || track.category === "custom";
+            const isGraphicsTrack = track.category === "graphics";
             return (
               <div key={track.id} className="flex" style={{ height: ROW_H }}>
                 {/* Sáv fejléc (ragadós balra) */}
@@ -135,32 +139,60 @@ export function Timeline() {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ background: meta.color }} />
                     <TrackNameInput track={track} onRename={renameTrack} />
-                    <button
-                      title="Némítás (mint a zeneszerkesztőkben)"
-                      onClick={(e) => { e.stopPropagation(); toggleMute(track.id); }}
-                      className={`w-6 h-6 shrink-0 rounded text-[10px] font-bold transition-colors ${track.muted ? "bg-rose-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
-                    >
-                      M
-                    </button>
-                    <button
-                      title="Szóló – csak ez a sáv fut"
-                      onClick={(e) => { e.stopPropagation(); toggleSolo(track.id); }}
-                      className={`w-6 h-6 shrink-0 rounded text-[10px] font-bold transition-colors ${track.solo ? "bg-amber-400 text-zinc-950" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
-                    >
-                      S
-                    </button>
+                    {isAudioTrack ? (
+                      <>
+                        <button
+                          title="Némítás – a sáv hangjai elhallgatnak"
+                          onClick={(e) => { e.stopPropagation(); toggleMute(track.id); }}
+                          className={`w-6 h-6 shrink-0 rounded text-[10px] font-bold transition-colors ${track.muted ? "bg-rose-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                        >
+                          M
+                        </button>
+                        <button
+                          title="Szóló – csak ez a sáv hangja szól (a grafika tovább fut)"
+                          onClick={(e) => { e.stopPropagation(); toggleSolo(track.id); }}
+                          className={`w-6 h-6 shrink-0 rounded text-[10px] font-bold transition-colors ${track.solo ? "bg-amber-400 text-zinc-950" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                        >
+                          S
+                        </button>
+                      </>
+                    ) : isGraphicsTrack ? (
+                      <button
+                        title={track.muted ? "Visszamutatás – a sáv vizuális elemei látszanak" : "Elrejtés – a sáv vizuális elemei nem látszanak"}
+                        onClick={(e) => { e.stopPropagation(); toggleMute(track.id); }}
+                        className={`w-6 h-6 shrink-0 rounded flex items-center justify-center transition-colors ${track.muted ? "bg-rose-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                      >
+                        {track.muted ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                      </button>
+                    ) : (
+                      <button
+                        title={track.muted ? "Bekapcsolás – a sáv blokkjai újra futnak" : "Kikapcsolás – a sáv blokkjai nem futnak le"}
+                        onClick={(e) => { e.stopPropagation(); toggleMute(track.id); }}
+                        className={`w-6 h-6 shrink-0 rounded flex items-center justify-center transition-colors ${track.muted ? "bg-rose-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                      >
+                        <Power className={`size-3.5 ${track.muted ? "rotate-180" : ""}`} />
+                      </button>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Volume2 className="size-3 text-zinc-500 shrink-0" />
-                    <Slider
-                      value={[track.volume]}
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      onValueChange={(v) => setTrackVolume(track.id, v[0])}
-                      className="flex-1 h-1"
-                    />
-                  </div>
+                  {isAudioTrack ? (
+                    <div className="flex items-center gap-1.5">
+                      <Volume2 className="size-3 text-zinc-500 shrink-0" />
+                      <Slider
+                        value={[track.volume]}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        onValueChange={(v) => setTrackVolume(track.id, v[0])}
+                        className="flex-1 h-1"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-[9px] leading-tight text-zinc-600 truncate">
+                      {isGraphicsTrack
+                        ? (track.muted ? "Elrejtve – lejátszáskor nem látszik" : "Vizuális sáv · szem ikon = elrejtés")
+                        : (track.muted ? "Kikapcsolva – a blokkjai nem futnak" : "Futtató sáv · kapcsoló = be/ki")}
+                    </div>
+                  )}
                 </div>
 
                 {/* Rács terület */}
