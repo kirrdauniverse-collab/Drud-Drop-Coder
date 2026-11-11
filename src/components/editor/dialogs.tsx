@@ -42,10 +42,11 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <section>
             <h3 className="font-bold text-amber-300 mb-2">A sávok és blokkok</h3>
             <ul className="space-y-1.5 text-[13px]">
-              <li><span className="text-cyan-300 font-semibold">Grafika</span> – hátterek, sprite-ok, szövegek, effektek. A háttér &quot;ragadós&quot;: áll, amíg új nem jön.</li>
-              <li><span className="text-emerald-300 font-semibold">Hang</span> – szintetizált hanghatások és zenei loopok; a blokk hossza a hangzás hossza.</li>
-              <li><span className="text-violet-300 font-semibold">Logika</span> – számlálók, feltételek, ugrások (ciklusok!), véletlen események, takarítás.</li>
-              <li><span className="text-amber-300 font-semibold">Bemenet</span> – amíg a blokk tart, él az irányítás (nyilak/WASD + Space) vagy a kattintás.</li>
+              <li><span className="text-cyan-300 font-semibold">Grafika</span> – hátterek (14 színtér), az <b>Alak (szabadon)</b> blokk 30 stílussal × 5 szereppel × 9 mozgással (több száz variáció!), kész alakok (szellem, autó, érme, lufi…), szövegek, effektek, eső/hó/villámlás.</li>
+              <li><span className="text-emerald-300 font-semibold">Hang</span> – 14 szintetizált hanghatás és 9 zenei loop (rock, chiptune, keringő, hip-hop…); a blokk hossza a hangzás hossza.</li>
+              <li><span className="text-violet-300 font-semibold">Logika</span> – számlálók, feltételek, ugrások, rendszeres megjelenítés, győzelem/játék vége.</li>
+              <li><span className="text-amber-300 font-semibold">Bemenet</span> – három irányítási mód: szabad, <b>ugrálás</b> (gravitáció + platformok + fejre-taposás!), csak vízszintes; plusz egérkövetés és kattintás-események.</li>
+              <li><span className="text-lime-300 font-semibold">App</span> – választó gombok (kvízekhez, menükhez) és beszédbuborék.</li>
               <li><span className="text-rose-300 font-semibold">Adat</span> – változók, életek, pontok, mentés/betöltés.</li>
               <li><span className="text-orange-300 font-semibold">Saját</span> – a feltöltött képeid és hangjaid, szintén blokkmá alakítva.</li>
             </ul>

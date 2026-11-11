@@ -337,7 +337,7 @@ function ParamControl({
             placeholder={def.key === "actionValue" ? "felirat / cél / hang neve" : ""}
           />
           {def.key === "actionValue" && (
-            <p className="text-[9px] text-zinc-600">felirat szövege · ugrásnál a cél lépésszám · hangnál: laser / robbanas / erme / pitty / suhintas / riasztas</p>
+            <p className="text-[9px] text-zinc-600">felirat szövege · ugrásnál a cél lépésszám · hangnál: laser / robbanas / erme / pitty / suhintas / riasztas / ugras / bonusz / talalat / gyozelem / jatek_vege / pukkanas / kattanas / mennydorges · életnél/hónál: a hozzáadás (pl. 1 vagy -1, 10)</p>
           )}
         </div>
       );

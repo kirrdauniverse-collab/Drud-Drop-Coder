@@ -1,6 +1,6 @@
 // ===== AppMixer – alap típusok =====
 
-export type Category = "logic" | "graphics" | "sound" | "input" | "data" | "custom";
+export type Category = "logic" | "graphics" | "sound" | "input" | "ui" | "data" | "custom";
 
 export interface CategoryMeta {
   id: Category;
@@ -27,22 +27,54 @@ export interface BlockParamDef {
 // A motor által kezelt "fajták"
 export type BlockKind =
   | "bg"            // háttér beállítás (ragadós)
-  | "sprite"        // entitás létrehozása
+  | "sprite"        // entitás létrehozása (klasszikus, űr-készlet)
+  | "shape"         // szabadon paraméterezhető alak (stílus × szerep × mozgás)
   | "text"          // szöveg entitás
-  | "effect"        // részecskék / villanás
+  | "effect"        // részecskék / villanás / időjárás
   | "sfx"           // egyszeri hang
   | "music"         // zenei minta a blokk hosszára
   | "keyboard"      // billentyű-irányítás aktiválása
+  | "pointer"       // egér/ujj követése
   | "click"         // kattintás-esemény aktiválása
+  | "choice"        // választó gombok (kvíz / menü)
   | "counter"       // változó növelése
   | "check"         // feltételvizsgálat + akció
   | "jump"          // léptető ugrás
   | "clear"         // entitások törlése
+  | "finish"        // győzelem / játék vége
+  | "spawner"       // rendszeres megjelenítés (adott lépéstenként)
   | "setvar"        // változó beállítása
   | "save"          // változók mentése
   | "load"          // változók betöltése
   | "customImage"   // feltöltött kép
   | "customAudio";  // feltöltött hang
+
+// Az általános "Alak" blokk stílusai (30 db, mindegyik rajzolt)
+export const SHAPE_STYLES = [
+  "ship", "meteor", "star", "cloud", "ball", "cube", "triangle", "diamond",
+  "heart", "car", "fish", "bird", "ghost", "bomb", "coin", "apple",
+  "balloon", "snowflake", "flower", "tree", "house", "planet", "moon", "rocket",
+  "ufo", "mushroom", "egg", "shield", "key", "potion", "snowman",
+] as const;
+export type ShapeStyle = (typeof SHAPE_STYLES)[number];
+
+// Mozgás-viselkedések az "Alak" blokkhoz
+export const SHAPE_MOVES = [
+  "static", "fall", "rise", "drift", "bounce", "patrol", "chase", "orbit", "wave",
+] as const;
+export type ShapeMove = (typeof SHAPE_MOVES)[number];
+
+export const SHAPE_MOVE_LABELS: Record<ShapeMove, string> = {
+  static: "Áll egy helyben",
+  fall: "Lefele zuhan",
+  rise: "Felfele emelkedik",
+  drift: "Oldalra sodródik",
+  bounce: "Pattog (nekiütközik a falaknak)",
+  patrol: "Oda-vissza jár",
+  chase: "Üldözi a játékost",
+  orbit: "Kering egy pont körül",
+  wave: "Hullámosan lebeg lefelé",
+};
 
 export interface BlockTypeDef {
   id: string;          // pl. "gfx.sprite.meteor"
@@ -138,6 +170,14 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
     color: "#fbbf24",
     chipClass: "bg-amber-500/15 border-amber-500/40 text-amber-200",
     textClass: "text-amber-300",
+  },
+  ui: {
+    id: "ui",
+    label: "App",
+    description: "Alkalmazás-elemek: választó gombok, kvízek, menük",
+    color: "#a3e635",
+    chipClass: "bg-lime-500/15 border-lime-500/40 text-lime-200",
+    textClass: "text-lime-300",
   },
   data: {
     id: "data",

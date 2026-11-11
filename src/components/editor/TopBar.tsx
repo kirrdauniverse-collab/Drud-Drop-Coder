@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge } from "lucide-react";
+import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function TopBar({
@@ -197,6 +197,9 @@ export function TopBar({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("space")} className="gap-2">
                 <Rocket className="size-4" /> Demó: Űr-támadás (játék)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("platform")} className="gap-2">
+                <Gamepad2 className="size-4" /> Demó: Ugrálós kaland (platformer)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("chill")} className="gap-2">
                 <Moon className="size-4" /> Demó: Nyugodt éjszaka

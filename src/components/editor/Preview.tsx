@@ -65,6 +65,16 @@ export function Preview() {
     engine?.handleCanvasClick(x, y);
   };
 
+  // Egér/ujj követés a játékosnak (input.pointer blokkhoz)
+  const handleCanvasMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const engine = getEngine();
+    if (!engine) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    engine.handleCanvasHover(x, y);
+  };
+
   const handlePlay = () => {
     const engine = getEngine();
     if (!engine) return;
@@ -87,7 +97,8 @@ export function Preview() {
             width={960}
             height={540}
             onClick={handleCanvasClick}
-            className="w-full aspect-video rounded-lg border border-zinc-800 shadow-2xl shadow-black bg-[#09090f] cursor-crosshair"
+            onPointerMove={handleCanvasMove}
+            className="w-full aspect-video rounded-lg border border-zinc-800 shadow-2xl shadow-black bg-[#09090f] cursor-crosshair touch-none"
           />
           {!playing && (
             <button

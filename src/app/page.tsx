@@ -66,6 +66,13 @@ export default function Home() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      // Ha gombra/menüpontra fókuszálunk, a Szóköz az adott elemet aktiválja
+      // (így nem indít el lejátszást vagy nem aktiválódik menüelem véletlenül).
+      // Az Escape és a többi gyorsbillentyű ilyenkor is működik.
+      const el = e.target as HTMLElement | null;
+      if (e.key === " " && el && (tag === "BUTTON" || el.closest("[role='menuitem']") || el.closest("[role='menu']"))) {
+        return;
+      }
       const ed = useEditor.getState();
 
       if (e.key === "Escape") {

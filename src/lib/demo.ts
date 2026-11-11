@@ -85,6 +85,61 @@ export function demoSpaceProject(): Project {
   };
 }
 
+// ===== Demó 3: Ugrálós kaland – platformer játék (új készlettel) =====
+export function demoPlatformProject(): Project {
+  const tracks: Track[] = [
+    track("p-gfx", "Grafika", "graphics"),
+    track("p-sprite", "Sprite-ok", "graphics"),
+    track("p-music", "Zene", "sound", 0.7),
+    track("p-input", "Bemenet", "input"),
+    track("p-logic", "Logika", "logic"),
+    track("p-data", "Adat", "data"),
+  ];
+  const blocks: Block[] = [
+    // Grafika
+    block("gfx.bg.preset", "p-gfx", 0, { preset: "forest" }, 8),
+    block("gfx.text", "p-gfx", 0, { text: "UGRÁLÓS KALAND", x: 50, y: 10, size: 38, color: "#bef264", sticky: true }, 32),
+    block("gfx.sprite.tree", "p-gfx", 0, { style: "tree", role: "deco", move: "static", x: 8, y: 80, size: 64, color: "#166534", sticky: true }, 4),
+    block("gfx.sprite.tree", "p-gfx", 2, { style: "tree", role: "deco", move: "static", x: 94, y: 80, size: 56, color: "#15803d", sticky: true }, 4),
+    // Sprite-ok: talaj + platformok + játékos + érmék + ellenség
+    block("gfx.sprite.platform", "p-sprite", 0, { style: "cube", role: "platform", move: "static", x: 50, y: 94, size: 95, height: 30, color: "#7c5a3a", sticky: true }, 4),
+    block("gfx.sprite.platform", "p-sprite", 3, { style: "cube", role: "platform", move: "static", x: 28, y: 72, size: 30, height: 18, color: "#8a6844", sticky: true }, 4),
+    block("gfx.sprite.platform", "p-sprite", 6, { style: "cube", role: "platform", move: "static", x: 58, y: 56, size: 26, height: 18, color: "#8a6844", sticky: true }, 4),
+    block("gfx.sprite.platform", "p-sprite", 9, { style: "cube", role: "platform", move: "static", x: 84, y: 40, size: 24, height: 18, color: "#8a6844", sticky: true }, 4),
+    block("gfx.shape", "p-sprite", 12, { style: "ball", role: "player", move: "static", speed: 0, x: 10, y: 82, size: 34, color: "#fbbf24", height: 26, value: 5, randomX: false, sticky: true }, 4),
+    block("gfx.sprite.coin", "p-sprite", 15, { style: "coin", role: "pickup", move: "static", speed: 0, x: 28, y: 62, size: 20, value: 10, color: "#fbbf24", sticky: true }, 2),
+    block("gfx.sprite.coin", "p-sprite", 17, { style: "coin", role: "pickup", move: "static", speed: 0, x: 58, y: 46, size: 20, value: 10, color: "#fbbf24", sticky: true }, 2),
+    block("gfx.sprite.coin", "p-sprite", 19, { style: "coin", role: "pickup", move: "static", speed: 0, x: 84, y: 30, size: 20, value: 10, color: "#fbbf24", sticky: true }, 2),
+    block("gfx.sprite.mushroom", "p-sprite", 21, { style: "mushroom", role: "pickup", move: "drift", speed: 35, x: 40, y: 88, size: 24, value: 5, color: "#ef4444", sticky: true }, 4),
+    block("gfx.sprite.bomb", "p-sprite", 25, { style: "bomb", role: "enemy", move: "patrol", speed: 60, x: 60, y: 88, size: 24, color: "#52525b", sticky: true, randomX: false }, 4),
+    block("gfx.sprite.heart", "p-sprite", 29, { style: "heart", role: "pickup", move: "static", speed: 0, x: 84, y: 32, size: 22, value: 1, color: "#f87171", sticky: true }, 2),
+    // Zene
+    block("music.chip", "p-music", 0, { tune: "adventure", volume: 50 }, 8),
+    block("music.chip", "p-music", 8, { tune: "adventure", volume: 50 }, 8),
+    block("music.chip", "p-music", 16, { tune: "happy", volume: 50 }, 8),
+    block("music.chip", "p-music", 24, { tune: "happy", volume: 50 }, 8),
+    // Bemenet: ugrálás mód!
+    block("input.keyboard", "p-input", 0, { mode: "jump", speed: 190, jump: 640 }, 32),
+    // Logika: ha minden érmét összegyűjtötted (35+ pont), győzelem!
+    block("logic.check", "p-logic", 30, { variable: "score", op: ">=", value: 35, action: "win", actionValue: "Minden érmét megkaptad!", x: 50, y: 50 }, 1),
+    block("logic.counter", "p-logic", 31, { variable: "kör", delta: 1 }, 1),
+    // Adat
+    block("data.setvar", "p-data", 0, { variable: "score", value: 0 }, 1),
+    block("data.lives", "p-data", 0, { value: 3 }, 1),
+  ];
+  return {
+    id: uid(),
+    name: "Ugrálós kaland (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 32,
+    tempoMs: 300,
+    loop: true,
+    masterVolume: 0.8,
+  };
+}
+
 // ===== Demó 2: Nyugodt éjszaka – nem játékos, "hangulat-alkalmazás" =====
 export function demoChillProject(): Project {
   const tracks: Track[] = [

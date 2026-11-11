@@ -1,4 +1,5 @@
-import type { BlockTypeDef, Category } from "./types";
+import type { BlockParamDef, BlockTypeDef, Category, ShapeMove, ShapeStyle } from "./types";
+import { SHAPE_MOVE_LABELS } from "./types";
 
 // ===== Előre definiált blokk-könyvtár =====
 // Minden blokk: kategória, ikon, motor-"fajta", alap hossz (lépés) és paraméterek.
@@ -14,6 +15,80 @@ const sel = (key: string, label: string, def: string, options: { value: string; 
 
 const txt = (key: string, label: string, def: string) =>
   ({ key, label, type: "text" as const, default: def });
+
+export const SHAPE_STYLE_OPTIONS: { value: ShapeStyle; label: string }[] = [
+  { value: "ship", label: "Űrhajó" },
+  { value: "meteor", label: "Meteor (kőzet)" },
+  { value: "star", label: "Csillag" },
+  { value: "cloud", label: "Felhő" },
+  { value: "ball", label: "Labda" },
+  { value: "cube", label: "Kocka / doboz" },
+  { value: "triangle", label: "Háromszög" },
+  { value: "diamond", label: "Gyémánt" },
+  { value: "heart", label: "Szív" },
+  { value: "car", label: "Autó" },
+  { value: "fish", label: "Hal" },
+  { value: "bird", label: "Madár" },
+  { value: "ghost", label: "Szellem" },
+  { value: "bomb", label: "Bomba" },
+  { value: "coin", label: "Érme" },
+  { value: "apple", label: "Alma" },
+  { value: "balloon", label: "Lufi" },
+  { value: "snowflake", label: "Hópehely" },
+  { value: "flower", label: "Virág" },
+  { value: "tree", label: "Fa" },
+  { value: "house", label: "Ház" },
+  { value: "planet", label: "Bolygó" },
+  { value: "moon", label: "Hold" },
+  { value: "rocket", label: "Rakéta" },
+  { value: "ufo", label: "UFO" },
+  { value: "mushroom", label: "Gomba" },
+  { value: "egg", label: "Tojás" },
+  { value: "shield", label: "Pajzs" },
+  { value: "key", label: "Kulcs" },
+  { value: "potion", label: "Főzet / ital" },
+];
+
+const ROLE_OPTIONS = [
+  { value: "player", label: "Játékos (irányítható)" },
+  { value: "enemy", label: "Ellenség (bajt okoz)" },
+  { value: "pickup", label: "Gyűjtendő (+pont)" },
+  { value: "deco", label: "Díszelem (átmenni rajta)" },
+  { value: "platform", label: "Akadály / platform (rá lehet állni)" },
+];
+
+const MOVE_OPTIONS = (Object.keys(SHAPE_MOVE_LABELS) as ShapeMove[]).map((m) => ({ value: m, label: SHAPE_MOVE_LABELS[m] }));
+
+// Az általános "Alak" blokk paraméterkészlete – a kész alakok is ezt használják
+// eltérő alapértékekkel, így mindegyik tovább szabható.
+function shapeParams(d: {
+  style?: string; role?: string; move?: string; speed?: number;
+  x?: number; y?: number; size?: number; color?: string;
+  height?: number; value?: number; randomX?: boolean; sticky?: boolean;
+}): BlockParamDef[] {
+  return [
+    sel("style", "Stílus", d.style ?? "ball", SHAPE_STYLE_OPTIONS),
+    sel("role", "Szerep", d.role ?? "deco", ROLE_OPTIONS),
+    sel("move", "Mozgás", d.move ?? "static", MOVE_OPTIONS),
+    num("speed", "Mozgás-sebesség", d.speed ?? 60, 0, 400),
+    num("x", "X pozíció", d.x ?? 50, 0, 100),
+    num("y", "Y pozíció", d.y ?? 50, -10, 100),
+    slide("size", "Méret", d.size ?? 30, 8, 120),
+    { key: "color", label: "Szín", type: "color", default: d.color ?? "#fbbf24" },
+    num("height", "Magasság (akadálynál)", d.height ?? 26, 4, 200),
+    num("value", "Pontérték (gyűjtendő)", d.value ?? 5, 1, 100),
+    { key: "randomX", label: "Véletlen X helyen jelenjen meg", type: "toggle", default: d.randomX ?? false },
+    { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: d.sticky ?? true },
+  ];
+}
+
+// Kész "Alak" blokk előre beállított stílussal/szereppel/mozgással
+function shapeBlock(
+  id: string, label: string, description: string, icon: string,
+  defaults: Parameters<typeof shapeParams>[0],
+): BlockTypeDef {
+  return { id, label, description, category: "graphics", icon, kind: "shape", defaultLength: 4, params: shapeParams(defaults) };
+}
 
 export const BLOCK_TYPES: BlockTypeDef[] = [
   // ---------- GRAFIKA ----------
@@ -32,6 +107,14 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
       { value: "forest", label: "Erdő" },
       { value: "neon", label: "Neon rács (synthwave)" },
       { value: "night", label: "Éjszakai város" },
+      { value: "desert", label: "Sivatag (dűnékkel)" },
+      { value: "mountains", label: "Havas hegyek" },
+      { value: "snow", label: "Téli táj (havazás)" },
+      { value: "candy", label: "Cukorborsó világ" },
+      { value: "underwater", label: "Víz alatti világ" },
+      { value: "road", label: "Országút (futópálya)" },
+      { value: "city", label: "Város nappal" },
+      { value: "moon", label: "Holdfelszín" },
     ])],
   },
   {
@@ -162,6 +245,99 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
       num("count", "Robbanások száma", 3, 1, 8),
     ],
   },
+  {
+    id: "gfx.effect.rain",
+    label: "Eső",
+    description: "Beindítja (vagy leállítja) a folyamatos esőzést a képernyőn – hangulathoz, vidám játékokhoz.",
+    category: "graphics",
+    icon: "CloudRain",
+    kind: "effect",
+    defaultLength: 4,
+    params: [
+      sel("mode", "Mód", "on", [
+        { value: "on", label: "Eső elindítása" },
+        { value: "off", label: "Eső leállítása" },
+      ]),
+      slide("strength", "Erősség", 60, 10, 100),
+    ],
+  },
+  {
+    id: "gfx.effect.snowfall",
+    label: "Hóesés",
+    description: "Lassan hulló hópelyhek – téli és ünnepi hangulathoz.",
+    category: "graphics",
+    icon: "CloudSnow",
+    kind: "effect",
+    defaultLength: 4,
+    params: [
+      sel("mode", "Mód", "on", [
+        { value: "on", label: "Hóesés elindítása" },
+        { value: "off", label: "Hóesés leállítása" },
+      ]),
+      slide("strength", "Erősség", 60, 10, 100),
+    ],
+  },
+  {
+    id: "gfx.effect.confetti",
+    label: "Konfetti",
+    description: "Színes konfettiszemök hullanak alfelül – ünnepléshez, nyereményhez.",
+    category: "graphics",
+    icon: "BadgeCheck",
+    kind: "effect",
+    defaultLength: 4,
+    params: [
+      num("count", "Szemek száma", 120, 20, 400),
+    ],
+  },
+  {
+    id: "gfx.effect.lightning",
+    label: "Villámlás",
+    description: "Villám csap le a képernyőn, villanással és mennydörgéssel.",
+    category: "graphics",
+    icon: "Zap",
+    kind: "effect",
+    defaultLength: 2,
+    params: [],
+  },
+  {
+    id: "gfx.effect.shake",
+    label: "Képernyőrázás",
+    description: "A teljes képernyő megrázódik – találatnál, ütközésnél.",
+    category: "graphics",
+    icon: "Activity",
+    kind: "effect",
+    defaultLength: 1,
+    params: [
+      slide("strength", "Erősség", 14, 4, 40),
+    ],
+  },
+
+  // ---------- ÁLTALÁNOS ALAK + KÉSZ ALAKOK ----------
+  {
+    id: "gfx.shape",
+    label: "Alak (szabadon)",
+    description: "A leghatékonyabb blokk: válassz stílust (30 alakzat), szerepet (játékos, ellenség, gyűjtendő, dísz, akadály) és mozgást (zuhanás, pattogás, üldözés, keringés…) – ebből több száz variáció születhet!",
+    category: "graphics",
+    icon: "Shapes",
+    kind: "shape",
+    defaultLength: 4,
+    params: shapeParams({ style: "ball", role: "deco", move: "static", y: 50, size: 30, color: "#fbbf24" }),
+  },
+  shapeBlock("gfx.sprite.platform", "Platform / talaj", "Tömör akadály, amire a játékos ráléphet (Ugrálás módban). A méret a szélesség, külön állítható a magasság is.", "Layers", { style: "cube", role: "platform", move: "static", x: 50, y: 92, size: 60, height: 26, color: "#78716c", sticky: true }),
+  shapeBlock("gfx.sprite.ghost", "Szellem (üldöző)", "Folyamatosan a játékost kergeti – akciósolásra, labirintusjátékokhoz.", "Ghost", { style: "ghost", role: "enemy", move: "chase", speed: 90, x: 50, y: 10, size: 30, color: "#e2e8f0", sticky: true }),
+  shapeBlock("gfx.sprite.bomb", "Bomba (zuhanó)", "Függőlegesen lezuhanó bomba – ha eltalálja a játékost, életet veszít.", "Bomb", { style: "bomb", role: "enemy", move: "fall", speed: 120, x: 50, y: -6, size: 26, color: "#52525b", sticky: false, randomX: false }),
+  shapeBlock("gfx.sprite.coin", "Érme (pattogó)", "Pattogó aranyérme, amit begyűjthet a játékos – platformerjátékok kedvence.", "Coins", { style: "coin", role: "pickup", move: "bounce", speed: 150, x: 50, y: 60, size: 20, value: 10, color: "#fbbf24", sticky: true }),
+  shapeBlock("gfx.sprite.balloon", "Lufi (emelkedő)", "Felfele szálló lufi – vigyázz, nehogy eltalálja a játékost, vagy gyűjtsd be pontért!", "Circle", { style: "balloon", role: "pickup", move: "rise", speed: 70, x: 50, y: 105, size: 24, value: 5, color: "#f87171", sticky: false }),
+  shapeBlock("gfx.sprite.fish", "Hal (úszkáló)", "Oldalra úszkáló hal – víz alatti jelenetekhez, gyűjtögetéshez vagy akadálynak.", "Fish", { style: "fish", role: "deco", move: "drift", speed: 60, x: 0, y: 60, size: 32, color: "#38bdf8", sticky: true }),
+  shapeBlock("gfx.sprite.car", "Autó (sodródó)", "Vízszintes utakon haladó autó – kikerulós játékokhoz közlekedő akadályként.", "Car", { style: "car", role: "enemy", move: "drift", speed: 140, x: 0, y: 80, size: 40, color: "#ef4444", sticky: false }),
+  shapeBlock("gfx.sprite.bird", "Madár (röpködő)", "Hullámosan röpködő madár, amely lassan lefelé ereszkedik – égi akadálynak.", "Bird", { style: "bird", role: "enemy", move: "wave", speed: 90, x: 50, y: 8, size: 26, color: "#fb7185", sticky: false }),
+  shapeBlock("gfx.sprite.mushroom", "Gomba (bónusz)", "Lassan oldalra vándorló gomba – Mario-feeling: begyűjtve plusz életet ad!", "FlaskConical", { style: "mushroom", role: "pickup", move: "drift", speed: 40, x: 30, y: 80, size: 24, value: 5, color: "#ef4444", sticky: true }),
+  shapeBlock("gfx.sprite.ufo", "UFO (keringő)", "Keringő repülő csészealj – nosztalgikus arcade akadály.", "Orbit", { style: "ufo", role: "enemy", move: "orbit", speed: 80, x: 50, y: 25, size: 36, color: "#a3e635", sticky: true }),
+  shapeBlock("gfx.sprite.tree", "Fa (dísz)", "Dekoratív fa a tájhoz – nem mozog, csak feldobja a színteret.", "TreePine", { style: "tree", role: "deco", move: "static", x: 15, y: 82, size: 60, color: "#16a34a", sticky: true }),
+  shapeBlock("gfx.sprite.house", "Ház (dísz)", "Kis ház – városi és falusias színterekhez, célpontnak is jó.", "Home", { style: "house", role: "deco", move: "static", x: 80, y: 78, size: 70, color: "#f97316", sticky: true }),
+  shapeBlock("gfx.sprite.heart", "Szív (plusz élet)", "Begyűjtve egy plusz életet ad a játékosnak.", "Heart", { style: "heart", role: "pickup", move: "static", x: 70, y: 40, size: 24, value: 1, color: "#f87171", sticky: true }),
+  shapeBlock("gfx.sprite.planet", "Bolygó (keringő)", "Keringő gyűrűs bolygó – űrjelenetek díszének.", "Orbit", { style: "planet", role: "deco", move: "orbit", speed: 30, x: 75, y: 25, size: 46, color: "#a78bfa", sticky: true }),
+  shapeBlock("gfx.sprite.snowman", "Hóember (dísz)", "Vidám hóember téli jelenetekhez – két golyóból és kalapból.", "Snowflake", { style: "snowman", role: "deco", move: "static", x: 25, y: 80, size: 50, color: "#e2e8f0", sticky: true }),
 
   // ---------- HANG ----------
   {
@@ -223,6 +399,86 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "sfx",
     defaultLength: 4,
     params: [slide("volume", "Hangerő", 60, 0, 100)],
+  },
+  {
+    id: "sfx.jump",
+    label: "Ugrás hang",
+    description: "Felfelé svungoló boing – platformerugráshoz.",
+    category: "sound",
+    icon: "ChevronsUp",
+    kind: "sfx",
+    defaultLength: 1,
+    params: [slide("volume", "Hangerő", 70, 0, 100)],
+  },
+  {
+    id: "sfx.powerup",
+    label: "Bónusz fanfár",
+    description: "Felfelé száguldó arpeggio – erősödésnél, pluszéletnél.",
+    category: "sound",
+    icon: "PartyPopper",
+    kind: "sfx",
+    defaultLength: 2,
+    params: [slide("volume", "Hangerő", 75, 0, 100)],
+  },
+  {
+    id: "sfx.hurt",
+    label: "Találat / sérülés",
+    description: "Rövid, mély „Öh!” – amikor a játékost eléri egy ellenség.",
+    category: "sound",
+    icon: "HeartCrack",
+    kind: "sfx",
+    defaultLength: 1,
+    params: [slide("volume", "Hangerő", 75, 0, 100)],
+  },
+  {
+    id: "sfx.win",
+    label: "Győzelmi fanfár",
+    description: "Négynemős, emelkedő fanfár – célbaérésnél, szintteljesítésnél.",
+    category: "sound",
+    icon: "Trophy",
+    kind: "sfx",
+    defaultLength: 4,
+    params: [slide("volume", "Hangerő", 80, 0, 100)],
+  },
+  {
+    id: "sfx.gameover",
+    label: "Játék vége dallam",
+    description: "Lefelé hulló, szomorú kis dallam – vesztésnél.",
+    category: "sound",
+    icon: "TrendingDown",
+    kind: "sfx",
+    defaultLength: 4,
+    params: [slide("volume", "Hangerő", 75, 0, 100)],
+  },
+  {
+    id: "sfx.pop",
+    label: "Pukkanás",
+    description: "Lekerekedett, rövid pukkanás – buboréknak, gombnak, felugrásnak.",
+    category: "sound",
+    icon: "Circle",
+    kind: "sfx",
+    defaultLength: 1,
+    params: [slide("volume", "Hangerő", 65, 0, 100)],
+  },
+  {
+    id: "sfx.click",
+    label: "Gomb kattanás",
+    description: "Száraz, rövid kattanás – alkalmazásgombokhoz, menükhöz.",
+    category: "sound",
+    icon: "MousePointerClick",
+    kind: "sfx",
+    defaultLength: 1,
+    params: [slide("volume", "Hangerő", 60, 0, 100)],
+  },
+  {
+    id: "sfx.thunder",
+    label: "Mennydörgés",
+    description: "Mély, dörgő zúgás – villámláshoz, drámai pillanatokhoz.",
+    category: "sound",
+    icon: "CloudLightning",
+    kind: "sfx",
+    defaultLength: 3,
+    params: [slide("volume", "Hangerő", 80, 0, 100)],
   },
   {
     id: "music.beat",
@@ -292,6 +548,74 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
       slide("volume", "Hangerő", 60, 0, 100),
     ],
   },
+  {
+    id: "music.rock",
+    label: "Rock riff",
+    description: "Torzított gitár-kiff + kemény dob – akcióscenékhez.",
+    category: "sound",
+    icon: "Guitar",
+    kind: "music",
+    defaultLength: 8,
+    params: [
+      sel("pattern", "Riff", "power", [
+        { value: "power", label: "Power (kemény)" },
+        { value: "punk", label: "Punk (gyors)" },
+      ]),
+      slide("volume", "Hangerő", 65, 0, 100),
+    ],
+  },
+  {
+    id: "music.chip",
+    label: "Chiptune",
+    description: "8 bites, retro konzolos hangzás – klasszikus játék-feeling.",
+    category: "sound",
+    icon: "Gamepad2",
+    kind: "music",
+    defaultLength: 8,
+    params: [
+      sel("tune", "Dallam", "adventure", [
+        { value: "adventure", label: "Kaland" },
+        { value: "happy", label: "Vidám" },
+      ]),
+      slide("volume", "Hangerő", 55, 0, 100),
+    ],
+  },
+  {
+    id: "music.waltz",
+    label: "Keringő",
+    description: "Elegáns 3/4-es oom-pah-pah – báloshoz, mesékhez.",
+    category: "sound",
+    icon: "Music",
+    kind: "music",
+    defaultLength: 8,
+    params: [
+      sel("chord", "Hangnem", "major", [
+        { value: "major", label: "Dúr (derűs)" },
+        { value: "minor", label: "Moll (szomorú)" },
+      ]),
+      slide("volume", "Hangerő", 55, 0, 100),
+    ],
+  },
+  {
+    id: "music.hiphop",
+    label: "Hip-hop beat",
+    description: "Lüktető boom-bap dobolás + mély basszus – urban hangulat.",
+    category: "sound",
+    icon: "Disc3",
+    kind: "music",
+    defaultLength: 8,
+    params: [slide("volume", "Hangerő", 65, 0, 100)],
+  },
+  {
+    id: "music.ambient",
+    label: "Áramló ambient",
+    description: "Finoman lebegő, álmodozó hangfoltok – nyugodt alkalmazásokhoz.",
+    category: "sound",
+    icon: "Sparkle",
+    kind: "music",
+    defaultLength: 8,
+    params: [slide("volume", "Hangerő", 50, 0, 100)],
+  },
 
   // ---------- LOGIKA ----------
   {
@@ -328,10 +652,54 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
         { value: "jump", label: "Ugrás egy lépésre" },
         { value: "sound", label: "Hang lejátszása" },
         { value: "clear", label: "Képernyő takarítása" },
+        { value: "win", label: "GYŐZELEM! (játék vége)" },
+        { value: "lose", label: "Játék vége (vesztettél)" },
+        { value: "lives", label: "Élet hozzáadása/levonása" },
+        { value: "score", label: "Pont hozzáadása" },
       ]),
       txt("actionValue", "Felirat / cél / hang", "Új szint!"),
       num("x", "Felirat X pozíció", 50, 0, 100),
       num("y", "Felirat Y pozíció", 50, 0, 100),
+    ],
+  },
+  {
+    id: "logic.finish",
+    label: "Győzelem / Játék vége",
+    description: "Bekövetkezéskor megállítja a játékot: Győzelem overlay fanfárral, vagy Játék vége képernyő. Így lesz a kompozícióból lezárult játék.",
+    category: "logic",
+    icon: "Flag",
+    kind: "finish",
+    defaultLength: 1,
+    params: [
+      sel("mode", "Mód", "win", [
+        { value: "win", label: "GYŐZELEM!" },
+        { value: "lose", label: "Játék vége" },
+      ]),
+      txt("label", "Felirat", "Gratulálok!"),
+    ],
+  },
+  {
+    id: "logic.spawn",
+    label: "Rendszeres megjelenítés",
+    description: "Amíg a blokk tart, minden N. lépésben automatikusan megjelenik egy alak (pl. sorozatos ellenség vagy érmeeső). Az Alak blokkhoz hasonlóan beállítható.",
+    category: "logic",
+    icon: "CopyPlus",
+    kind: "spawner",
+    defaultLength: 8,
+    params: [
+      num("every", "Minden hányadik lépésben", 2, 1, 16),
+      sel("style", "Stílus", "meteor", SHAPE_STYLE_OPTIONS),
+      sel("role", "Szerep", "enemy", [
+        { value: "enemy", label: "Ellenség" },
+        { value: "pickup", label: "Gyűjtendő (+pont)" },
+        { value: "deco", label: "Díszelem" },
+      ]),
+      sel("move", "Mozgás", "fall", MOVE_OPTIONS),
+      num("speed", "Mozgás-sebesség", 80, 0, 400),
+      slide("size", "Méret", 24, 8, 90),
+      { key: "color", label: "Szín", type: "color", default: "#9ca3af" },
+      num("value", "Pontérték (gyűjtendő)", 5, 1, 100),
+      { key: "randomX", label: "Véletlen X helyen", type: "toggle", default: true },
     ],
   },
   {
@@ -384,12 +752,32 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
   {
     id: "input.keyboard",
     label: "Billentyű-irányítás",
-    description: "Amíg a blokk tart, a nyilak/WASD mozgatják a játékost, a Space-szel lőhetsz.",
+    description: "Amíg a blokk tart, a nyilak/WASD mozgatják a játékost. Három mód: Szabad (minden irány), Ugrálás (gravitáció + platformok, Szóköz=ugrás, ugrálva fejeletörés!) vagy Csak vízszintes.",
     category: "input",
     icon: "Keyboard",
     kind: "keyboard",
     defaultLength: 32,
-    params: [num("speed", "Mozgás sebesség", 220, 40, 600)],
+    params: [
+      sel("mode", "Mód", "free", [
+        { value: "free", label: "Szabad (minden irány)" },
+        { value: "jump", label: "Ugrálás (gravitáció + platformok)" },
+        { value: "horizontal", label: "Csak vízszintes" },
+      ]),
+      num("speed", "Mozgás sebesség", 220, 40, 600),
+      num("jump", "Ugróerő", 620, 200, 1000),
+    ],
+  },
+  {
+    id: "input.pointer",
+    label: "Egér / ujj követése",
+    description: "Amíg a blokk tart, a játékos követi az egeret (mobilon az ujjat) – kisgyerekes játékokhoz, mágneses élményhez.",
+    category: "input",
+    icon: "Hand",
+    kind: "pointer",
+    defaultLength: 32,
+    params: [
+      slide("smooth", "Követés lassúsága", 70, 5, 100),
+    ],
   },
   {
     id: "input.click",
@@ -405,6 +793,40 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
         { value: "star", label: "Csillag appears a kattintásnál" },
         { value: "meteor", label: "Meteor hullik a kattintásnál" },
       ]),
+    ],
+  },
+
+  // ---------- APP ----------
+  {
+    id: "ui.choice",
+    label: "Választó gombok",
+    description: "Kérdést és 2–4 válaszgombot jelenít meg a képernyő alján. Kattintáskor a változó a gomb sorszámát kapja (1, 2, 3…) és opcionálisan ugorhat. Kvízekhez, menükhez, döntési pontokhoz!",
+    category: "ui",
+    icon: "ListChecks",
+    kind: "choice",
+    defaultLength: 8,
+    params: [
+      txt("question", "Kérdés", "Melyik ajtót nyitod ki?"),
+      txt("options", "Válaszok (vesszővel)", "Bal ajtó,Jobb ajtó"),
+      txt("variable", "Változó neve", "valasztas"),
+      num("target", "Ugrás erre a lépésre (0 = nincs)", 0, 0, 128),
+    ],
+  },
+  {
+    id: "ui.bubble",
+    label: "Beszédbuborék",
+    description: "Szereplő melletti felirat-buborék – meséléshez, oktatáshoz, dialogusokhoz.",
+    category: "ui",
+    icon: "MessageCircle",
+    kind: "text",
+    defaultLength: 6,
+    params: [
+      txt("text", "Szöveg", "Szia, jó játék ez!"),
+      num("x", "X pozíció", 50, 0, 100),
+      num("y", "Y pozíció", 30, 0, 100),
+      slide("size", "Betűméret", 20, 10, 48),
+      { key: "color", label: "Szín", type: "color", default: "#f5f5f4" },
+      { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false },
     ],
   },
 
@@ -475,6 +897,7 @@ export function customImageTypeDef(assetName: string): BlockTypeDef {
         { value: "player", label: "Játékos" },
         { value: "enemy", label: "Ellenség" },
         { value: "pickup", label: "Gyűjtendő (+pont)" },
+        { value: "platform", label: "Akadály / platform" },
         { value: "bg", label: "Háttérkép" },
       ]),
       num("x", "X pozíció", 50, 0, 100),
@@ -482,6 +905,7 @@ export function customImageTypeDef(assetName: string): BlockTypeDef {
       num("vx", "Vízszintes sebesség", 0, -200, 200),
       num("vy", "Függőleges sebesség", 0, -200, 200),
       slide("size", "Méret", 40, 8, 120),
+      num("height", "Magasság (akadálynál)", 30, 4, 200),
       num("value", "Pontérték (gyűjtendő)", 5, 1, 100),
       { key: "sticky", label: "Ragadós", type: "toggle", default: true },
     ],
@@ -502,4 +926,4 @@ export function customAudioTypeDef(assetName: string): BlockTypeDef {
 }
 
 // Kategóriánkénti csoportosítás a könyvtár panelhez
-export const CATEGORY_ORDER: Category[] = ["graphics", "sound", "logic", "input", "data", "custom"];
+export const CATEGORY_ORDER: Category[] = ["graphics", "sound", "logic", "input", "ui", "data", "custom"];

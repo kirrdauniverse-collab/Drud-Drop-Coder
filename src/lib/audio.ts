@@ -144,6 +144,114 @@ export class AudioEngine {
         }
         break;
       }
+      case "sfx.jump": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(220, t);
+        o.frequency.exponentialRampToValueAtTime(680, t + 0.16);
+        g.gain.setValueAtTime(0.2 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.22);
+        break;
+      }
+      case "sfx.powerup": {
+        [392, 523, 659, 784].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "square";
+          const st = t + i * 0.07;
+          o.frequency.setValueAtTime(freq, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime(0.14 * v, st + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.16);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 0.18);
+        });
+        break;
+      }
+      case "sfx.hurt": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(190, t);
+        o.frequency.exponentialRampToValueAtTime(70, t + 0.2);
+        g.gain.setValueAtTime(0.2 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.26);
+        break;
+      }
+      case "sfx.win": {
+        [523, 659, 784, 1047].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "triangle";
+          const st = t + i * 0.14;
+          const dur = i === 3 ? 0.5 : 0.18;
+          o.frequency.setValueAtTime(freq, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime(0.18 * v, st + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + dur);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + dur + 0.05);
+        });
+        break;
+      }
+      case "sfx.gameover": {
+        [440, 349, 262].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "triangle";
+          const st = t + i * 0.22;
+          o.frequency.setValueAtTime(freq, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime(0.16 * v, st + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.3);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 0.34);
+        });
+        break;
+      }
+      case "sfx.pop": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(380, t);
+        o.frequency.exponentialRampToValueAtTime(120, t + 0.1);
+        g.gain.setValueAtTime(0.24 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.14);
+        break;
+      }
+      case "sfx.click": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "square";
+        o.frequency.setValueAtTime(1400, t);
+        g.gain.setValueAtTime(0.09 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.06);
+        break;
+      }
+      case "sfx.thunder": {
+        const src = ctx.createBufferSource();
+        src.buffer = this.getNoise(ctx);
+        const f = ctx.createBiquadFilter();
+        f.type = "lowpass";
+        f.frequency.setValueAtTime(900, t);
+        f.frequency.exponentialRampToValueAtTime(50, t + 1.0);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.5 * v, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+        src.connect(f).connect(g).connect(this.master);
+        src.start(t); src.stop(t + 1.15);
+        break;
+      }
     }
   }
 
@@ -215,7 +323,89 @@ export class AudioEngine {
         const freq = seq[idx < 7 ? idx : 13 - idx];
         this.arpNote(freq, t, sub * 0.85, v * 0.14);
       }
+    } else if (typeId === "music.rock") {
+      const pattern = String(params.pattern ?? "power");
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const beatPos = s % 4;
+        if (beatPos === 0) this.kick(t, v * 0.8);
+        if (beatPos === 2) this.snare(t, v * 0.55);
+        if (s % 2 === 0) this.hihat(t, v * 0.16);
+        const riff = pattern === "power" ? [82.4, 82.4, 98, 82.4, 110, 98, 82.4, 73.4] : [110, 110, 98, 110, 130.8, 110, 98, 110];
+        this.distGuitar(riff[s % riff.length], t, stepDur * 0.8, v * 0.16);
+      }
+    } else if (typeId === "music.chip") {
+      const tune = String(params.tune ?? "adventure");
+      const mel = tune === "happy"
+        ? [523, 523, 587, 659, 523, 659, 784, 659]
+        : [392, 523, 440, 349, 392, 523, 587, 440];
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        this.chipNote(mel[s % mel.length], t, stepDur * 0.7, v * 0.13);
+        if (s % 2 === 0) this.chipNote(mel[s % mel.length] / 4, t, stepDur * 0.9, v * 0.1);
+        if (s % 4 === 0) this.kick(t, v * 0.35);
+      }
+    } else if (typeId === "music.waltz") {
+      const chord = String(params.chord ?? "major");
+      const base = chord === "major" ? 261.6 : 246.9;
+      const third = chord === "major" ? base * 1.26 : base * 1.189;
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 3;
+        if (pos === 0) this.bassNote(base / 2, t, stepDur * 0.9, v * 0.4);
+        else { this.chipNote(base, t, stepDur * 0.5, v * 0.09); this.chipNote(third, t, stepDur * 0.5, v * 0.09); }
+      }
+    } else if (typeId === "music.hiphop") {
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 4;
+        if (pos === 0) this.kick(t, v * 0.95);
+        if (pos === 2) this.snare(t, v * 0.5);
+        if (pos === 1 || pos === 3) this.hihat(t, v * 0.18);
+        if (pos === 0 || pos === 3) this.bassNote([49, 49, 58.3, 49][s % 4], t, stepDur * 0.7, v * 0.45);
+      }
+    } else if (typeId === "music.ambient") {
+      const dur = steps * stepDur;
+      [220, 261.6, 329.6, 392].forEach((f, i) => this.padNote(f, t0, dur, v * 0.1, i * 0.04));
+      for (let s = 0; s < steps; s += 2) {
+        const t = t0 + s * stepDur + Math.random() * stepDur;
+        const scale2 = [523.3, 587.3, 659.3, 784, 880];
+        this.arpNote(scale2[Math.floor(Math.random() * scale2.length)], t, stepDur * 1.6, v * 0.06);
+      }
     }
+  }
+
+  private distGuitar(freq: number, t: number, dur: number, v: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    const f = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    const sh = ctx.createWaveShaper();
+    const curve = new Float32Array(64);
+    for (let i = 0; i < 64; i++) { const x = (i / 32) - 1; curve[i] = Math.tanh(2.6 * x); }
+    sh.curve = curve;
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(freq, t);
+    f.type = "lowpass";
+    f.frequency.value = 1600;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(sh).connect(f).connect(g).connect(this.master!);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  private chipNote(freq: number, t: number, dur: number, v: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.master!);
+    o.start(t); o.stop(t + dur + 0.03);
   }
 
   private kick(t: number, v: number) {
