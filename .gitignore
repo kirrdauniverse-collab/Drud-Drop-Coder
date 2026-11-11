@@ -54,3 +54,4 @@ server.log
 /skills/
 # sandbox lokális fájlok
 db/
+tool-results/

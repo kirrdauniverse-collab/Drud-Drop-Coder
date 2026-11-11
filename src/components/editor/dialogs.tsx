@@ -40,10 +40,21 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </section>
 
           <section>
+            <h3 className="font-bold text-amber-300 mb-2">A könyvtár egy nagy „tömlő”</h3>
+            <p className="text-[13px]">
+              A bal oldali könyvtár úgy működik, mint az eJay mintadobozai: <b>több tucat sprite, háttér
+              és hang</b> vár felhasználásra, előnézeti képpel. <b>Bármelyikből többet is</b> bedobhatsz a
+              sávokba – akár ugyanazt többször is, akár egyszerre többfélét. A lerakott blokk
+              paramétereinél a <b>Stílus</b> mezővel bármikor átválthatod egy másikra, a háttéreknél pedig
+              a <b>Típus</b> mezővel másik színtérre cserélheted.
+            </p>
+          </section>
+
+          <section>
             <h3 className="font-bold text-amber-300 mb-2">A sávok és blokkok</h3>
             <ul className="space-y-1.5 text-[13px]">
-              <li><span className="text-cyan-300 font-semibold">Grafika</span> – hátterek (14 színtér), az <b>Alak (szabadon)</b> blokk 30 stílussal × 5 szereppel × 9 mozgással (több száz variáció!), kész alakok (szellem, autó, érme, lufi…), szövegek, effektek, eső/hó/villámlás.</li>
-              <li><span className="text-emerald-300 font-semibold">Hang</span> – 14 szintetizált hanghatás és 9 zenei loop (rock, chiptune, keringő, hip-hop…); a blokk hossza a hangzás hossza.</li>
+              <li><span className="text-cyan-300 font-semibold">Grafika</span> – <b>19 kész háttér</b> (űr, tengerpart, láva, neon, szivárvány…) és <b>59 sprite</b>, mind külön húzható elemként: állatok (cica, nyuszi, sárkány, polip…), tárgyak (korona, kincsesláda, torta…), űrhajók, platformok. Mindegyik állítható: szín, méret, mozgás, szerep, darabszám. Plusz szövegek és effektek (eső, hó, tűzijáték, villámlás).</li>
+              <li><span className="text-emerald-300 font-semibold">Hang</span> – <b>25 szintetizált hanghatás</b> (lézer, csobbanás, doboszló, telefon…) és <b>14 zenei loop</b> (rock, chiptune, szamba, reggae, altatódal…). A ▸ gombbal a könyvtárban azonnal meghallgathatod őket; a blokk hossza a hangzás hossza.</li>
               <li><span className="text-violet-300 font-semibold">Logika</span> – számlálók, feltételek, ugrások, rendszeres megjelenítés, győzelem/játék vége.</li>
               <li><span className="text-amber-300 font-semibold">Bemenet</span> – három irányítási mód: szabad, <b>ugrálás</b> (gravitáció + platformok + fejre-taposás!), csak vízszintes; plusz egérkövetés és kattintás-események.</li>
               <li><span className="text-lime-300 font-semibold">App</span> – választó gombok (kvízekhez, menükhez) és beszédbuborék.</li>

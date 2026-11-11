@@ -23,18 +23,18 @@ Ahogy a zeneszerkesztőkben a hangmintákat teszed az idővonalra, itt **blokkok
 
 ## Fő funkciók
 
-- **🎛️ Blokk-könyvtár** – több száz választható elem 7 kategóriában:
-  - *Grafika*: 14 animált háttér + szín/átmenet háttér, az **Alak (szabadon)** blokk 31 stílusa × 5 szerepe × 9 mozgása, kész alakok (űrhajó, meteor, szellem, autó, érme, lufi…), szöveg, robbanás, tűzijáték, eső/hó/villámlás
-  - *Hang*: 14 szintetizált hanghatás + 9 zenei loop (techno, rock, chiptune, keringő, hip-hop, ambient…)
+- **🎛️ Blokk-könyvtár – a nagy „tömlő"** – **145 elem** 7 kategóriában, mindegyik **külön húzható**, **előnézeti képpel**, és **bármiből több is** bedobható a sávokra:
+  - *Grafika*: **19 animált háttér** (űr, éjszakai város, naplemente, napos ég, óceán, víz alatti világ, tengerpart, erdő, sivatag, havas hegyek, téli táj, neon rács, város, országút, holdfelszín, cukorvilág, szivárvány, láva, sakktábla) + szín/átmenet háttér, **59 sprite** külön blokkként (űrhajó, meteor, UFO, műhold, bolygó · cica, kutya, nyuszi, pingvin, méhecske, lepke, sárkány, robot, pók, béka, teknős, bálna, polip, rák, hal, madár, szellem · korona, kard, pajzs, kulcs, kincsesláda, torta, fánk, ajándék, ajtó, ház, autó, bomba, érme…), szöveg, robbanás, tűzijáték, eső/hó/villámlás
+  - *Hang*: **25 szintetizált hanghatás** (lézer, robbanás, érme, csobbanás, dobszóló, telefon, varázscsengés, síp, berregő, gépírogatás, motor…) + **14 zenei loop** (techno, rock, chiptune, keringő, hip-hop, ambient, **szamba, disco, pólka, reggae, altatódal**…) – a könyvtárban ▸ gombbal azonnal meghallgathatók
   - *Logika*: számláló, feltételvizsgálat, ugrás (ciklusok!), véletlen esemény, rendszeres megjelenítés, takarítás, győzelem/játék vége
   - *Bemenet*: billentyű-irányítás (szabad / ugrálós platformer / vízszintes), egérkövetés, kattintás-események
   - *App*: választó gombok (kvízek, menük), beszédbuborék
   - *Adat*: változók, életek, mentés/betöltés
   - *Saját*: feltöltött képek és hangok szintén blokkmá alakítva
 - **🎚️ Tartalomhez illő blokk-beállítások** – minden blokktípusnak **saját, hasznos** paraméterkészlete van, csoportosítva:
-  - *Sprite / Alak* → Megjelenés (stílus, méret, szín, **átlátszóság**, pörgés) · Szerep (játékos/ellenség/gyűjtendő/dísz/platform, pontérték) · Mozgás (zuhan/emelkedik/sodródik/pattog/üldöz/kering/hullám, **sebesség**, **haladási irány**) · Elhelyezés (X, Y, véletlen hely, **mennyi jelenjen meg egyszerre**)
+  - *Sprite / Alak* → Megjelenés (**Stílus** – átváltható bármelyik 59 sprite-ra!, méret, szín, **átlátszóság**, pörgés) · Szerep (játékos/ellenség/gyűjtendő/dísz/platform, pontérték) · Mozgás (zuhan/emelkedik/sodródik/pattog/üldöz/kering/hullám, **sebesség**, **haladási irány**) · Elhelyezés (X, Y, véletlen hely, **mennyi jelenjen meg egyszerre**)
   - *Zene és hang* → **hangerő**, **lejátszási sebesség** (25–200%, a loop ténylegesen gyorsul/lassul!), **némítás** (a blokk a helyén marad, de nem szól)
-  - *Háttér* → kész színtér vagy szín + **színátmenet** fentről lefelé + **sötétítés** (hogy a sprite-ok előre ugorjanak)
+  - *Háttér* → **Típus** (bármikor átváltható másik színtérre!) vagy szín + **színátmenet** fentről lefelé + **sötétítés** (hogy a sprite-ok előre ugorjanak)
   - *Szöveg* → igazítás (bal/közép/jobb), **beúszás** (fokozatos megjelenés), ragadós mód
   - *Robbanás* → részecskeszám, **erő** (részecske-sebesség), szín
 - **🎚️ Sok folyamat-sáv** – korlátlan sáv, **kategóriának megfelelő vezérlőkkel**: hangsávnál hangerő + némítás (M) + szóló (S), grafikai sávnál elrejtés (szem ikon), logikai/bemeneti/adat sávnál be/ki kapcsoló. A szóló csak a hangokat némítja el – a kép tovább fut!

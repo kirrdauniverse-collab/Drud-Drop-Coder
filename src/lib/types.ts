@@ -50,12 +50,21 @@ export type BlockKind =
   | "customImage"   // feltöltött kép
   | "customAudio";  // feltöltött hang
 
-// Az általános "Alak" blokk stílusai (30 db, mindegyik rajzolt)
+// Az általános "Alak" blokk stílusai (57 db, mindegyik rajzolt) – ez a sprite-készlet,
+// amiből a könyvtárban minden stílus külön húzható blokként is elérhető.
 export const SHAPE_STYLES = [
-  "ship", "meteor", "star", "cloud", "ball", "cube", "triangle", "diamond",
-  "heart", "car", "fish", "bird", "ghost", "bomb", "coin", "apple",
-  "balloon", "snowflake", "flower", "tree", "house", "planet", "moon", "rocket",
-  "ufo", "mushroom", "egg", "shield", "key", "potion", "snowman",
+  // űr / klasszikus
+  "ship", "meteor", "star", "cloud", "planet", "moon", "rocket", "ufo", "satellite",
+  // egyszerű alakzatok
+  "ball", "cube", "triangle", "diamond", "heart", "bolt", "gear", "gem",
+  // természet
+  "tree", "flower", "cactus", "sun", "snowflake", "snowman", "apple", "egg", "mushroom",
+  // állatok
+  "cat", "dog", "bunny", "penguin", "bee", "butterfly", "dragon", "robot", "spider",
+  "frog", "turtle", "whale", "octopus", "crab", "fish", "bird", "ghost",
+  // tárgyak
+  "car", "bomb", "coin", "balloon", "key", "potion", "shield", "sword", "crown",
+  "cake", "donut", "gift", "chest", "door", "house",
 ] as const;
 export type ShapeStyle = (typeof SHAPE_STYLES)[number];
 
@@ -87,6 +96,13 @@ export interface BlockTypeDef {
   defaultLength: number;
   params: BlockParamDef[];
   assetId?: string;    // saját tartalmaknál
+  hidden?: boolean;    // true = csak régi mentések miatt szerepel, a könyvtárban nem látszik
+  group?: string;      // alcím a könyvtárban (pl. "Sprite-ok", "Hanghatások")
+  preview?: {          // könyvtár-előnézet rajzolásához
+    kind: "sprite" | "bg";
+    style?: string;    // sprite stílus / bg preset
+    color?: string;
+  };
 }
 
 export interface Block {

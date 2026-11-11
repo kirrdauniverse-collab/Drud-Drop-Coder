@@ -255,6 +255,235 @@ export class AudioEngine {
         src.start(t); src.stop(t + 1.15 / r);
         break;
       }
+      case "sfx.boing": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(140 * r, t);
+        o.frequency.exponentialRampToValueAtTime(560 * r, t + 0.09 / r);
+        o.frequency.exponentialRampToValueAtTime(110 * r, t + 0.3 / r);
+        g.gain.setValueAtTime(0.22 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34 / r);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.36 / r);
+        break;
+      }
+      case "sfx.chime": {
+        [880, 1174.7, 1568].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          const st = t + (i * 0.14) / r;
+          o.frequency.setValueAtTime(freq * r, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime(0.16 * v, st + 0.015 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 1.0 / r);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 1.05 / r);
+        });
+        break;
+      }
+      case "sfx.splash": {
+        const src = ctx.createBufferSource();
+        src.buffer = this.getNoise(ctx);
+        const f = ctx.createBiquadFilter();
+        f.type = "bandpass";
+        f.Q.value = 0.8;
+        f.frequency.setValueAtTime(1400 * r, t);
+        f.frequency.exponentialRampToValueAtTime(200 * r, t + 0.3 / r);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.3 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35 / r);
+        src.connect(f).connect(g).connect(this.master);
+        src.start(t); src.stop(t + 0.4 / r);
+        // cseppek
+        [900, 1300].forEach((fr, i) => {
+          const o = ctx.createOscillator();
+          const og = ctx.createGain();
+          o.type = "sine";
+          const st = t + (0.12 + i * 0.1) / r;
+          o.frequency.setValueAtTime(fr * r, st);
+          o.frequency.exponentialRampToValueAtTime(fr * 1.8 * r, st + 0.08 / r);
+          og.gain.setValueAtTime(0.1 * v, st);
+          og.gain.exponentialRampToValueAtTime(0.0001, st + 0.12 / r);
+          o.connect(og).connect(this.master!);
+          o.start(st); o.stop(st + 0.14 / r);
+        });
+        break;
+      }
+      case "sfx.drumroll": {
+        const hits = 22;
+        for (let i = 0; i < hits; i++) {
+          const st = t + (i * (0.045 + (i / hits) * 0.02)) / r;
+          const src = ctx.createBufferSource();
+          src.buffer = this.getNoise(ctx);
+          const f = ctx.createBiquadFilter();
+          f.type = "bandpass";
+          f.frequency.value = 1900;
+          const g = ctx.createGain();
+          const vol = (0.05 + (i / hits) * 0.2) * v;
+          g.gain.setValueAtTime(vol, st);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.05 / r);
+          src.connect(f).connect(g).connect(this.master);
+          src.start(st); src.stop(st + 0.06 / r);
+        }
+        // záró ütés
+        this.kick(t + (hits * 0.055) / r + 0.05 / r, v * 0.9);
+        break;
+      }
+      case "sfx.phone": {
+        for (let ring = 0; ring < 2; ring++) {
+          const base = t + ring * 0.55 / r;
+          for (let i = 0; i < 8; i++) {
+            const st = base + (i * 0.05) / r;
+            [440, 480].forEach((fr) => {
+              const o = ctx.createOscillator();
+              const g = ctx.createGain();
+              o.type = "sine";
+              o.frequency.setValueAtTime(fr * r, st);
+              g.gain.setValueAtTime(0.0001, st);
+              g.gain.linearRampToValueAtTime(0.09 * v, st + 0.012 / r);
+              g.gain.setValueAtTime(0.09 * v, st + 0.04 / r);
+              g.gain.exponentialRampToValueAtTime(0.0001, st + 0.05 / r);
+              o.connect(g).connect(this.master!);
+              o.start(st); o.stop(st + 0.06 / r);
+            });
+          }
+        }
+        break;
+      }
+      case "sfx.magic": {
+        const notes = [659.3, 784, 987.8, 1318.5, 1568, 2093];
+        notes.forEach((fr, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "triangle";
+          const st = t + (i * 0.06) / r;
+          o.frequency.setValueAtTime(fr * r, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime(0.13 * v, st + 0.01 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.35 / r);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 0.38 / r);
+        });
+        break;
+      }
+      case "sfx.bubble": {
+        [520, 760, 980].forEach((fr, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          const st = t + (i * 0.09) / r;
+          o.frequency.setValueAtTime(fr * 0.6 * r, st);
+          o.frequency.exponentialRampToValueAtTime(fr * 1.4 * r, st + 0.07 / r);
+          g.gain.setValueAtTime(0.14 * v, st);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.1 / r);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 0.12 / r);
+        });
+        break;
+      }
+      case "sfx.whistle": {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        const lfo = ctx.createOscillator();
+        const lfoG = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(2100 * r, t);
+        lfo.frequency.setValueAtTime(28, t);
+        lfoG.gain.setValueAtTime(140, t);
+        lfo.connect(lfoG).connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.12 * v, t + 0.03 / r);
+        g.gain.setValueAtTime(0.12 * v, t + 0.3 / r);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38 / r);
+        o.connect(g).connect(this.master);
+        o.start(t); o.stop(t + 0.4 / r);
+        lfo.start(t); lfo.stop(t + 0.4 / r);
+        break;
+      }
+      case "sfx.buzzer": {
+        const o = ctx.createOscillator();
+        const o2 = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "square";
+        o2.type = "square";
+        o.frequency.setValueAtTime(110 * r, t);
+        o2.frequency.setValueAtTime(113 * r, t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.11 * v, t + 0.02 / r);
+        g.gain.setValueAtTime(0.11 * v, t + 0.45 / r);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5 / r);
+        o.connect(g);
+        o2.connect(g);
+        g.connect(this.master);
+        o.start(t); o.stop(t + 0.52 / r);
+        o2.start(t); o2.stop(t + 0.52 / r);
+        break;
+      }
+      case "sfx.ding": {
+        [1318.5, 1975.5].forEach((fr, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          const st = t;
+          o.frequency.setValueAtTime(fr * r, st);
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.linearRampToValueAtTime((i === 0 ? 0.18 : 0.08) * v, st + 0.01 / r);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.9 / r);
+          o.connect(g).connect(this.master!);
+          o.start(st); o.stop(st + 0.95 / r);
+        });
+        break;
+      }
+      case "sfx.typewriter": {
+        const clicks = 7;
+        for (let i = 0; i < clicks; i++) {
+          const st = t + (i * (0.075 + Math.random() * 0.02)) / r;
+          const src = ctx.createBufferSource();
+          src.buffer = this.getNoise(ctx);
+          const f = ctx.createBiquadFilter();
+          f.type = "highpass";
+          f.frequency.value = 2500 + Math.random() * 1500;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.12 * v, st);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.03 / r);
+          src.connect(f).connect(g).connect(this.master);
+          src.start(st); src.stop(st + 0.04 / r);
+        }
+        // kocogás
+        const st2 = t + (clicks * 0.08) / r;
+        const src2 = ctx.createBufferSource();
+        src2.buffer = this.getNoise(ctx);
+        const f2 = ctx.createBiquadFilter();
+        f2.type = "bandpass";
+        f2.frequency.value = 900;
+        const g2 = ctx.createGain();
+        g2.gain.setValueAtTime(0.16 * v, st2);
+        g2.gain.exponentialRampToValueAtTime(0.0001, st2 + 0.08 / r);
+        src2.connect(f2).connect(g2).connect(this.master);
+        src2.start(st2); src2.stop(st2 + 0.1 / r);
+        break;
+      }
+      case "sfx.engine": {
+        const o = ctx.createOscillator();
+        const f = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(42 * r, t);
+        o.frequency.exponentialRampToValueAtTime(88 * r, t + 0.5 / r);
+        o.frequency.exponentialRampToValueAtTime(60 * r, t + 1.1 / r);
+        f.type = "lowpass";
+        f.frequency.setValueAtTime(300 * r, t);
+        f.frequency.exponentialRampToValueAtTime(900 * r, t + 0.5 / r);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.2 * v, t + 0.08 / r);
+        g.gain.setValueAtTime(0.2 * v, t + 0.8 / r);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15 / r);
+        o.connect(f).connect(g).connect(this.master);
+        o.start(t); o.stop(t + 1.2 / r);
+        break;
+      }
     }
   }
 
@@ -376,6 +605,78 @@ export class AudioEngine {
         const t = t0 + s * stepDur + Math.random() * stepDur;
         const scale2 = [523.3, 587.3, 659.3, 784, 880];
         this.arpNote(scale2[Math.floor(Math.random() * scale2.length)], t, stepDur * 1.6, v * 0.06);
+      }
+    } else if (typeId === "music.samba") {
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 8;
+        // surdo (mély dob) az erős ütemeken
+        if (pos === 0 || pos === 3 || pos === 4 || pos === 6) this.kick(t, v * 0.65);
+        // rim
+        if (pos === 2 || pos === 5 || pos === 7) this.snare(t, v * 0.3);
+        // pergő (shaker) minden fél lépésben
+        this.hihat(t, v * (s % 2 === 0 ? 0.14 : 0.08));
+        // szinkópált basszus
+        const bass = [98, 0, 0, 98, 110, 0, 98, 0][pos];
+        if (bass) this.bassNote(bass, t, stepDur * 0.6, v * 0.4);
+      }
+    } else if (typeId === "music.disco") {
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 8;
+        if (pos % 2 === 0) this.kick(t, v * 0.85);
+        if (pos % 2 === 1) this.hihat(t, v * 0.22);
+        if (pos === 4) this.snare(t, v * 0.5);
+        // funky basszus
+        const bassSeq = [98, 0, 110, 98, 0, 123.5, 116.5, 0];
+        if (bassSeq[pos]) this.bassNote(bassSeq[pos], t, stepDur * 0.75, v * 0.4);
+        // csillogás a leosztásokon
+        if (pos % 2 === 1) this.arpNote(1046.5 * (pos === 3 ? 1.19 : 1), t, stepDur * 0.4, v * 0.05);
+      }
+    } else if (typeId === "music.polka") {
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 4;
+        // oom-pah-pah 2/4-es érzés
+        if (pos === 0 || pos === 2) this.kick(t, v * 0.7);
+        this.hihat(t, v * 0.12);
+        if (pos === 1 || pos === 3) {
+          this.chipNote(392, t, stepDur * 0.4, v * 0.08);
+          this.chipNote(493.9, t, stepDur * 0.4, v * 0.08);
+        }
+        if (pos === 0) this.bassNote(98, t, stepDur * 0.8, v * 0.45);
+        if (pos === 2) this.bassNote(116.5, t, stepDur * 0.8, v * 0.45);
+      }
+    } else if (typeId === "music.reggae") {
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const pos = s % 8;
+        // one-drop: üres az 1-esen, dob a 4-esen
+        if (pos === 3) { this.kick(t, v * 0.75); this.snare(t, v * 0.5); }
+        if (pos === 7) this.snare(t, v * 0.3);
+        // skank (off-beat akkordok)
+        if (pos % 2 === 1) {
+          this.chipNote(329.6, t, stepDur * 0.25, v * 0.06);
+          this.chipNote(392, t, stepDur * 0.25, v * 0.06);
+          this.chipNote(493.9, t, stepDur * 0.25, v * 0.06);
+        }
+        // lüktető basszus
+        const bass = [73.4, 0, 0, 0, 82.4, 0, 87.3, 0][pos];
+        if (bass) this.bassNote(bass, t, stepDur * 0.9, v * 0.5);
+      }
+    } else if (typeId === "music.lullaby") {
+      const mel = [523.3, 0, 587.3, 0, 659.3, 0, 587.3, 0, 523.3, 0, 493.9, 0, 523.3, 0, 0, 0];
+      const dur = steps * stepDur;
+      this.padNote(261.6, t0, dur, v * 0.08);
+      this.padNote(329.6, t0, dur, v * 0.06, 0.03);
+      for (let s = 0; s < steps; s++) {
+        const t = t0 + s * stepDur;
+        const note = mel[s % mel.length];
+        if (note) {
+          // zenedoboz-feeling: lágy háromszög hullám + visszhang-szerű ismétlés
+          this.arpNote(note, t, stepDur * 1.4, v * 0.12);
+          this.arpNote(note * 2, t + 0.015, stepDur * 0.8, v * 0.03);
+        }
       }
     }
   }
