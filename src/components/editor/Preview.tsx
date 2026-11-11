@@ -24,6 +24,7 @@ export function Preview() {
   const setPlayStep = useEditor((s) => s.setPlayStep);
   const [events, setEvents] = useState<EngineEvent[]>([]);
   const [vars, setVars] = useState<Record<string, number>>({});
+  const [overlay, setOverlay] = useState(false);
 
   // Motor inicializálása egyszer
   useEffect(() => {
@@ -40,6 +41,7 @@ export function Preview() {
     const varsTimer = setInterval(() => {
       const e = getEngine();
       if (e) setVars({ ...e.vars });
+      setOverlay(e?.overlayActive() ?? false);
       const ed = useEditor.getState();
       if (ed.playing !== (e?.playing ?? false) && !(e?.paused ?? false)) setPlaying(e?.playing ?? false);
     }, 250);
@@ -100,7 +102,7 @@ export function Preview() {
             onPointerMove={handleCanvasMove}
             className="w-full aspect-video rounded-lg border border-zinc-800 shadow-2xl shadow-black bg-[#09090f] cursor-crosshair touch-none"
           />
-          {!playing && (
+          {!playing && !overlay && (
             <button
               onClick={handlePlay}
               className="absolute inset-0 rounded-lg flex flex-col items-center justify-center gap-3 bg-black/45 hover:bg-black/30 transition-colors group"

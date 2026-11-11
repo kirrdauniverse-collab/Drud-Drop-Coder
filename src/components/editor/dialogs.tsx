@@ -31,12 +31,26 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <section>
             <h3 className="font-bold text-amber-300 mb-2">Gyors kezdés (5 lépés)</h3>
             <ol className="list-decimal list-inside space-y-1.5 text-[13px]">
-              <li>Nyomj <b>▶ Lejátszás</b>t – az előre betöltött demó azonnal futtatható játék!</li>
-              <li>A jobbra alsó <b>előnézetben</b> nyilakkal/WASD mozogj, <b>Szóközzel</b> lőj, egérrel is lőhetsz.</li>
+              <li>Nyomj <b>▶ Lejátszás</b>t – az előre betöltött demó azonnal futtatható játék, főmenüvel!</li>
+              <li>A jobbra alsó <b>előnézetben</b> a menüben kattints az <b>Indítás</b>ra, aztán nyilakkal/WASD mozogj, <b>Szóközzel</b> lőj, egérrel is lőhetsz.</li>
               <li>A bal oldali <b>könyvtárból</b> húzz egy új blokkot (pl. Meteor) bármelyik sáv üres cellájába.</li>
               <li>Kattints a blokkra: a jobb oldali <b>tulajdonságpanelen</b> állítsd a paramétereit.</li>
               <li>Nyomj újra ▶ – és máris másképp fut az alkalmazásod.</li>
             </ol>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-amber-300 mb-2">Hét kész demójáték – a Projekt menüben</h3>
+            <ul className="space-y-1.5 text-[13px] list-disc list-inside">
+              <li><b>Űr-támadás</b> – lövöldözős: zuhanó meteorok, hulló csillagok, toplista.</li>
+              <li><b>Bunkyó kaland</b> – Super Mario-szerű platformer ugrálással, fejről taposással, zászlós céllal.</li>
+              <li><b>Galaxi őrség</b> – Galaga-stílus: vízszintes irányítás, keringő UFO-k, hullámok.</li>
+              <li><b>Amőba párbaj</b> – nagy pályás ötös sor okos gép vagy barát ellen.</li>
+              <li><b>A Sárkány kardja</b> – kaland-RPG ágazatos történettel és varázskvízzel.</li>
+              <li><b>Célbalövölde</b> – FPS-stílusú lövögetés keringő célpontokkal.</li>
+              <li><b>Nyugodt éjszaka</b> – nem játék, hanem hangulat-alkalmazás.</li>
+            </ul>
+            <p className="text-[12px] text-zinc-500 mt-1.5">Mindegyik főmenűvel indul (Főmenü blokk), Top-10 pontlistával (Pontlista blokk) zárul, és a végén kattintva visszatér a menübe – épp úgy, mint egy igazi játék.</p>
           </section>
 
           <section>
@@ -53,12 +67,12 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <section>
             <h3 className="font-bold text-amber-300 mb-2">A sávok és blokkok</h3>
             <ul className="space-y-1.5 text-[13px]">
-              <li><span className="text-cyan-300 font-semibold">Grafika</span> – <b>19 kész háttér</b> (űr, tengerpart, láva, neon, szivárvány…) és <b>59 sprite</b>, mind külön húzható elemként: állatok (cica, nyuszi, sárkány, polip…), tárgyak (korona, kincsesláda, torta…), űrhajók, platformok. Mindegyik állítható: szín, méret, mozgás, szerep, darabszám. Plusz szövegek és effektek (eső, hó, tűzijáték, villámlás).</li>
+              <li><span className="text-cyan-300 font-semibold">Grafika</span> – <b>20 kész háttér</b> (űr, tengerpart, láva, neon, szivárvány…) és <b>61 sprite</b>, mind külön húzható elemként: állatok (cica, nyuszi, sárkány, polip…), tárgyak (korona, kincsesláda, torta…), űrhajók, platformok, zászló és kastély. Mindegyik állítható: szín, méret, mozgás, szerep, darabszám. Plusz szövegek és effektek (eső, hó, tűzijáték, villámlás).</li>
               <li><span className="text-emerald-300 font-semibold">Hang</span> – <b>25 szintetizált hanghatás</b> (lézer, csobbanás, doboszló, telefon…) és <b>14 zenei loop</b> (rock, chiptune, szamba, reggae, altatódal…). A ▸ gombbal a könyvtárban azonnal meghallgathatod őket; a blokk hossza a hangzás hossza.</li>
               <li><span className="text-violet-300 font-semibold">Logika</span> – számlálók, feltételek, ugrások, rendszeres megjelenítés, győzelem/játék vége.</li>
               <li><span className="text-amber-300 font-semibold">Bemenet</span> – három irányítási mód: szabad, <b>ugrálás</b> (gravitáció + platformok + fejre-taposás!), csak vízszintes; plusz egérkövetés és kattintás-események.</li>
-              <li><span className="text-lime-300 font-semibold">App</span> – választó gombok (kvízekhez, menükhez) és beszédbuborék.</li>
-              <li><span className="text-rose-300 font-semibold">Adat</span> – változók, életek, pontok, mentés/betöltés.</li>
+              <li><span className="text-lime-300 font-semibold">App</span> – <b>Főmenü</b> (cím + gombok, ugrásokkal – a léptető megvárja a választást), <b>táblás játék</b> (amőba / 3-soros, gép ellen is), választó gombok (kvízekhez) és beszédbuborék.</li>
+              <li><span className="text-rose-300 font-semibold">Adat</span> – változók, életek, pontok, mentés/betöltés és <b>Pontlista</b> (top-10 a böngészőben, a játék végén automatikusan menti).</li>
               <li><span className="text-orange-300 font-semibold">Saját</span> – a feltöltött képeid és hangjaid, szintén blokkmá alakítva.</li>
             </ul>
           </section>

@@ -11,6 +11,7 @@ import { drawBgPreset, bgPresetLabel } from "./backgrounds";
 const W = 960;
 const H = 540;
 const VARS_KEY = "appmixer.vars.v1";
+const HS_KEY = "appmixer.highscore.";
 
 type Role = "player" | "enemy" | "pickup" | "deco" | "text" | "projectile" | "platform";
 
@@ -64,6 +65,53 @@ interface BgState {
   image?: HTMLImageElement;
 }
 
+// Főmenü-állapot (a léptető megáll, míg a játékos választ)
+interface MenuState {
+  title: string;
+  subtitle: string;
+  options: string[];
+  targets: number[];   // gordonként hova ugorjon (-1 = csak folytatás)
+  variable: string;
+}
+
+// Pontlista-állapot (top-10 a böngésző tárolójában)
+interface HighscoreState {
+  board: string;
+  title: string;
+  rows: { name: string; score: number }[];
+  savedIndex: number;  // az épp mentett sor (kiemeléshez)
+  until: number;
+  target: number;      // bezáráskor ide ugorjon (-1 = nincs)
+}
+
+// Táblás játék (amőba / 3-soros) állapota
+interface BoardState {
+  size: number;
+  winLen: number;
+  vsAI: boolean;
+  grid: number[];    // 0 üres, 1 = X (te), 2 = O (ellenfél)
+  turn: number;
+  over: boolean;
+  winner: number;    // 0 folyamatban, 1 = X, 2 = O, 3 = döntetlen
+  variable: string;
+  target: number;
+  lastMove: number;
+  aiAt: number;
+}
+
+function readHS(board: string): { name: string; score: number }[] {
+  try {
+    const raw = localStorage.getItem(HS_KEY + board);
+    return raw ? (JSON.parse(raw) as { name: string; score: number }[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeHS(board: string, rows: { name: string; score: number }[]) {
+  try { localStorage.setItem(HS_KEY + board, JSON.stringify(rows)); } catch {}
+}
+
 export class RuntimeEngine {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -108,6 +156,9 @@ export class RuntimeEngine {
   private activeChoice: {
     question: string; options: string[]; variable: string; target: number; until: number;
   } | null = null;
+  private menu: MenuState | null = null;
+  private hs: HighscoreState | null = null;
+  private board: BoardState | null = null;
   private spawners: {
     until: number; nextAt: number; everyMs: number;
     spec: { style: string; role: string; move: string; speed: number; size: number; color: string; value: number; randomX: boolean; dir: number; alpha: number; spin: boolean; count: number };
@@ -177,6 +228,9 @@ export class RuntimeEngine {
     this.spawners = [];
     this.weather = null;
     this.bolt = null;
+    this.menu = null;
+    this.hs = null;
+    this.board = null;
     this.invulnUntil = 0;
     this.keyboardUntil = 0;
     this.clickUntil = 0;
@@ -202,9 +256,24 @@ export class RuntimeEngine {
     this.playing = false;
     this.paused = false;
     this.step = 0;
+    this.menu = null;
+    this.hs = null;
+    this.board = null;
     this.onStep(0);
     audioEngine.stopAll();
     this.emit(0, "Megállítva – a képernyő tartalma megmarad", "info");
+  }
+
+  // Van-e épp teljes képernyős réteg (menü / pontlista / táblás játék)?
+  // A Előnézet panel ez alapján rejti el a ▶ gombot, hogy a rétegre lehessen kattintani.
+  overlayActive(): boolean {
+    return this.menu !== null || this.hs !== null || this.board !== null;
+  }
+
+  // Álljon-e a léptető? (Rétegek + választó gombok alatt megvárjuk a játékost.)
+  private stepPaused(now: number): boolean {
+    return this.menu !== null || this.hs !== null || this.board !== null
+      || (this.activeChoice !== null && now < this.activeChoice.until);
   }
 
   resetView() {
@@ -243,8 +312,45 @@ export class RuntimeEngine {
   }
 
   handleCanvasClick(xPct: number, yPct: number) {
+    const now = performance.now();
+    // 1) Főmenü gombok – a léptető addig áll, míg választasz
+    if (this.menu) {
+      const rects = this.menuButtonRects();
+      const px = (xPct / 100) * W;
+      const py = (yPct / 100) * H;
+      for (let i = 0; i < rects.length; i++) {
+        const r = rects[i];
+        if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+          const m = this.menu;
+          this.menu = null;
+          this.vars[m.variable] = i + 1;
+          audioEngine.playSfx("sfx.click", 0.8);
+          this.emit(this.step, `Menü: „${m.options[i]}” (${m.variable} = ${i + 1})`, "logic");
+          const t = m.targets[i] ?? -1;
+          if (t >= 0) this.jumpTo(t);
+          else this.stepDeadline = now;
+          return;
+        }
+      }
+      return; // a menü elnyeli a kattintást
+    }
+    // 2) Pontlista bezárása (kattintásra)
+    if (this.hs) {
+      const t = this.hs.target;
+      this.hs = null;
+      audioEngine.playSfx("sfx.click", 0.6);
+      if (t >= 0 && (!this.playing || this.gameOver)) this.restartAt(t);
+      else if (t >= 0) { this.jumpTo(t); this.stepDeadline = now; }
+      else this.stepDeadline = now;
+      return;
+    }
+    // 3) Táblás játék (amőba / 3-soros)
+    if (this.board) {
+      this.boardClick(xPct, yPct);
+      return;
+    }
     if (!this.playing || this.paused) return;
-    // 1) Választó gombok kezelése (ha aktív)
+    // 4) Választó gombok kezelése (ha aktív)
     if (this.activeChoice && performance.now() < this.activeChoice.until) {
       const c = this.activeChoice;
       const n = c.options.length;
@@ -348,6 +454,10 @@ export class RuntimeEngine {
     const alpha = pr.opacity === undefined ? 1 : Math.max(0.05, Math.min(1, Number(pr.opacity) / 100));
     const spin = Boolean(pr.spin ?? false);
     const count = Math.max(1, Math.min(12, Math.round(Number(pr.count ?? 1))));
+    // Iránymozgások (zuhanás / emelkedés / sodródás / hullámzás) NEM halnak el a blokk
+    // hosszával: mennek, míg ki nem érnek a képernyőből – így a meteor tényleg lezuhan,
+    // a lufi tényleg felszáll. Csak a helyben álló elemek élnek a blokk hosszáig.
+    const directional = move === "fall" || move === "rise" || move === "drift" || move === "wave";
     // Mozgásból adódó kezdő sebesség (a futtatókörben a move-vezérlés tartja karban)
     let vx = 0, vy = 0;
     if (move === "fall") vy = speed;
@@ -372,7 +482,7 @@ export class RuntimeEngine {
         value: Number(pr.value ?? 5),
         color: String(pr.color ?? "#fbbf24"),
         alpha, spin,
-        sticky, life: sticky ? null : opts.life,
+        sticky, life: sticky ? null : (directional ? null : opts.life),
         srcId: opts.srcId,
       });
     }
@@ -395,8 +505,10 @@ export class RuntimeEngine {
     const p = this.getPlayer();
     const sx = p ? p.x : 50;
     const sy = p ? p.y - 4 : 95;
-    const dx = (xPct / 100) * W - (sx / 100) * W;
-    const dy = (yPct / 100) * H - (sy / 100) * H;
+    let dx = (xPct / 100) * W - (sx / 100) * W;
+    let dy = (yPct / 100) * H - (sy / 100) * H;
+    // Ha a cél pont a lövöcskén van (pl. célkereszt-játék), alapból felfelé lőjünk
+    if (Math.hypot(dx, dy) < 24) { dx = 0; dy = -1; }
     const len = Math.hypot(dx, dy) || 1;
     const speed = 520;
     this.spawn({
@@ -431,7 +543,7 @@ export class RuntimeEngine {
     const dt = Math.min(50, now - this.lastFrame) / 1000;
     this.lastFrame = now;
 
-    if (this.playing && !this.paused && !this.gameOver) {
+    if (this.playing && !this.paused && !this.gameOver && !this.stepPaused(now)) {
       const p = this.getProject();
       while (now >= this.stepDeadline) {
         this.fireStep(this.step, p);
@@ -452,6 +564,10 @@ export class RuntimeEngine {
         this.lastReportedStep = this.step;
         this.onStep(this.step);
       }
+    } else if (this.stepPaused(now)) {
+      // Réteg (menü / pontlista / tábla / kvíz) alatt ne halmozódjanak a lépések:
+      // a határidő kövesse a "most"-ot, így bezáráskor azonnal, ugrás nélkül megy tovább.
+      this.stepDeadline = now;
     }
 
     this.update(dt, now);
@@ -699,9 +815,70 @@ export class RuntimeEngine {
           options: opts.length > 0 ? opts : ["A", "B"],
           variable: String(pr.variable ?? "valasztas"),
           target: Number(pr.target ?? 0),
-          until: performance.now() + Math.max(b.length * p.tempoMs, 6000),
+          until: performance.now() + Math.max(b.length * p.tempoMs, 9000),
         };
         this.emit(b.start, `Választó gombok: „${this.activeChoice.question}”`, "logic");
+        break;
+      }
+      case "menu": {
+        const opts = String(pr.options ?? "Indítás")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 4);
+        const targets = String(pr.targets ?? "")
+          .split(",")
+          .map((s) => {
+            const n = parseInt(s.trim(), 10);
+            return Number.isNaN(n) ? -1 : n;
+          })
+          .slice(0, 4);
+        this.menu = {
+          title: String(pr.title ?? "FŐMENÜ"),
+          subtitle: String(pr.subtitle ?? ""),
+          options: opts.length > 0 ? opts : ["Indítás"],
+          targets,
+          variable: String(pr.variable ?? "menu"),
+        };
+        this.emit(b.start, `Főmenü: ${this.menu.title} (${this.menu.options.join(" / ")})`, "logic");
+        break;
+      }
+      case "highscore": {
+        const boardName = String(pr.board ?? "appmixer");
+        if (String(pr.mode ?? "save") === "reset") {
+          try { localStorage.removeItem(HS_KEY + boardName); } catch {}
+          this.emit(b.start, `Toplista törölve: ${boardName}`, "data");
+          break;
+        }
+        this.showHighscore(
+          p,
+          boardName,
+          String(pr.mode ?? "save") === "save",
+          String(pr.title ?? "TOP 10"),
+          String(pr.name ?? "Játékos"),
+          b.length,
+          Number(pr.target ?? -1),
+        );
+        break;
+      }
+      case "board": {
+        const mode = String(pr.mode ?? "amoba");
+        const size = mode === "3soros" ? 3 : Math.max(5, Math.min(15, Math.round(Number(pr.size ?? 12))));
+        const winLen = mode === "3soros" ? 3 : 5;
+        const vsAI = String(pr.opponent ?? "ai") !== "human";
+        this.board = {
+          size, winLen, vsAI,
+          grid: new Array(size * size).fill(0),
+          turn: 1, over: false, winner: 0,
+          variable: String(pr.variable ?? "tabla"),
+          target: Number(pr.target ?? -1),
+          lastMove: -1, aiAt: 0,
+        };
+        this.emit(
+          b.start,
+          `Táblás játék indul: ${mode === "3soros" ? "3-soros (3×3)" : `amőba (${size}×${size}, ${winLen}-ös)`} – ${vsAI ? "gép ellen" : "két játékos"}`,
+          "logic",
+        );
         break;
       }
       case "finish": {
@@ -722,6 +899,7 @@ export class RuntimeEngine {
           this.emit(b.start, `Játék vége: ${this.finishLabel}`, "warn");
         }
         this.onGameOver(this.vars["score"] ?? 0);
+        this.autoHighscore();
         break;
       }
       case "spawner": {
@@ -807,6 +985,7 @@ export class RuntimeEngine {
             }
             this.emit(b.start, `GYŐZELEM: ${this.finishLabel}`, "logic");
             this.onGameOver(this.vars["score"] ?? 0);
+            this.autoHighscore();
           } else if (action === "lose") {
             this.finished = "lose";
             this.finishLabel = av || "Vesztettél!";
@@ -815,6 +994,7 @@ export class RuntimeEngine {
             audioEngine.playSfx("sfx.gameover", 0.9, vol);
             this.emit(b.start, `Játék vége: ${this.finishLabel}`, "warn");
             this.onGameOver(this.vars["score"] ?? 0);
+            this.autoHighscore();
           } else if (action === "lives") {
             const delta = parseInt(av, 10) || 1;
             this.vars["lives"] = Math.max(0, (this.vars["lives"] ?? 3) + delta);
@@ -910,6 +1090,76 @@ export class RuntimeEngine {
     this.stepDeadline = performance.now() + this.getProject().tempoMs;
     this.lastReportedStep = this.step;
     this.onStep(this.step);
+  }
+
+  // Tiszta újraindítás egy adott lépésre (pl. pontlista → főmenü a játék végén)
+  private restartAt(step: number) {
+    this.entities = [];
+    this.particles = [];
+    this.spawners = [];
+    this.weather = null;
+    this.gameOver = false;
+    this.finished = null;
+    this.finishLabel = "";
+    this.invulnUntil = 0;
+    this.playing = true;
+    this.paused = false;
+    this.jumpTo(step);
+  }
+
+  // Toplista megjelenítése (és opcionálisan az aktuális pont mentése)
+  private showHighscore(
+    p: Project,
+    boardName: string,
+    save: boolean,
+    title: string,
+    name: string,
+    lenSteps: number,
+    target: number,
+  ) {
+    let rows = readHS(boardName);
+    let savedIndex = -1;
+    if (save) {
+      const score = this.vars["score"] ?? 0;
+      rows.push({ name, score });
+      rows.sort((a, b) => b.score - a.score);
+      rows = rows.slice(0, 10);
+      savedIndex = rows.findIndex((r) => r.name === name && r.score === score);
+      writeHS(boardName, rows);
+      this.emit(this.step, `Toplista mentve: ${name} – ${score} pont`, "data");
+    } else {
+      this.emit(this.step, `Toplista megjelenítve: ${boardName}`, "data");
+    }
+    this.hs = {
+      board: boardName,
+      title,
+      rows,
+      savedIndex,
+      until: performance.now() + Math.max(lenSteps * p.tempoMs, 9000),
+      target,
+    };
+  }
+
+  // Ha a projektben van Pontlista blokk, a játék végén automatikusan mentsen és mutassa.
+  // Mentős blokkot keresünk először; ha csak "mutatós" van, azt használjuk.
+  private autoHighscore() {
+    const p = this.getProject();
+    const all = p.blocks.filter((x) => x.typeId === "data.highscore");
+    if (all.length === 0) return;
+    const b =
+      all.find((x) => String(this.mergedParams(x).mode ?? "save") === "save") ?? all[0];
+    const pr = this.mergedParams(b);
+    const mode = String(pr.mode ?? "save");
+    if (mode === "reset") return;
+    this.showHighscore(
+      p,
+      String(pr.board ?? "appmixer"),
+      mode === "save",
+      String(pr.title ?? "TOP 10"),
+      String(pr.name ?? "Játékos"),
+      16,
+      Number(pr.target ?? -1),
+    );
   }
 
   // ---------- Frissítés ----------
@@ -1100,12 +1350,15 @@ export class RuntimeEngine {
       }
     }
 
-    // Lejárt entitások törlése
+    // Lejárt / képernyőn kívülre került entitások törlése
     this.entities = this.entities.filter((e) => {
       if (e.life !== null && e.life <= 0) return false;
-      if (e.role === "enemy" && (e.y * H / 100) > H + 80) return false;
-      if (e.role === "pickup" && e.move !== "static" && (e.y * H / 100) > H + 60) return false;
+      if (e.role === "player" || e.role === "platform") return true;
+      if (e.kind === "cloud") return true; // a felhők körbe-körbe sodródnak
+      if (e.move === "static" || e.move === "orbit" || e.move === "patrol" || e.move === "chase" || e.move === "bounce") return true;
       if (e.role === "projectile" && (e.y < -10 || e.x < -10 || e.x > 110 || (e.y * H / 100) > H + 10)) return false;
+      // Zuhanó / emelkedő / sodródó elemek: ha kiértek a képből, távozzanak
+      if (e.y > 120 || e.y < -20 || e.x > 120 || e.x < -20) return false;
       return true;
     });
 
@@ -1150,6 +1403,7 @@ export class RuntimeEngine {
                 this.playing = false;
                 this.paused = false;
                 this.onGameOver(this.vars["score"] ?? 0);
+                this.autoHighscore();
                 this.emit(this.step, "JÁTÉK VÉGE", "warn");
               }
             }
@@ -1188,10 +1442,190 @@ export class RuntimeEngine {
     if (this.flash) this.flash.t = Math.max(0, this.flash.t - dt * 2.2);
     if (this.bolt && performance.now() > this.bolt.until) this.bolt = null;
     if (this.activeChoice && performance.now() > this.activeChoice.until) this.activeChoice = null;
+
+    // Lejárt pontlista réteg letakarítása
+    if (this.hs && now > this.hs.until) this.hs = null;
+
+    // Gép lépése a táblás játékban (kis "gondolkodási" idő után)
+    if (this.board && this.board.vsAI && !this.board.over && this.board.turn === 2 && now >= this.board.aiAt) {
+      this.aiMove();
+    }
   }
 
   private isHeartLike(e: Entity): boolean {
     return e.style === "heart";
+  }
+
+  // ---------- Táblás játék (amőba / 3-soros) ----------
+
+  // A tábla négyszöge vászon-koordinátákban
+  private boardRect(): { x: number; y: number; side: number } {
+    const side = Math.min(W * 0.74, H * 0.72);
+    return { x: (W - side) / 2, y: (H - side) / 2 + 12, side };
+  }
+
+  private cellAt(px: number, py: number): number {
+    const b = this.board;
+    if (!b) return -1;
+    const r = this.boardRect();
+    const cell = r.side / b.size;
+    const cx = Math.floor((px - r.x) / cell);
+    const cy = Math.floor((py - r.y) / cell);
+    if (cx < 0 || cx >= b.size || cy < 0 || cy >= b.size) return -1;
+    return cy * b.size + cx;
+  }
+
+  // A parti végi gombok (Új játék / Tovább) téglalépái
+  private boardButtonRects(): { again: { x: number; y: number; w: number; h: number }; next: { x: number; y: number; w: number; h: number } } {
+    const bw = 200, bh = 52, gap = 24;
+    const y = H * 0.88;
+    return {
+      again: { x: W / 2 - bw - gap / 2, y, w: bw, h: bh },
+      next: { x: W / 2 + gap / 2, y, w: bw, h: bh },
+    };
+  }
+
+  private boardClick(xPct: number, yPct: number) {
+    const b = this.board;
+    if (!b) return;
+    const now = performance.now();
+    const px = (xPct / 100) * W;
+    const py = (yPct / 100) * H;
+    if (b.over) {
+      const rb = this.boardButtonRects();
+      const inR = (r: { x: number; y: number; w: number; h: number }) =>
+        px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+      if (inR(rb.again)) {
+        b.grid = new Array(b.size * b.size).fill(0);
+        b.turn = 1;
+        b.over = false;
+        b.winner = 0;
+        b.lastMove = -1;
+        b.aiAt = 0;
+        audioEngine.playSfx("sfx.click", 0.7);
+        this.emit(this.step, "Új parti a táblán", "logic");
+        return;
+      }
+      if (inR(rb.next)) {
+        const t = b.target;
+        this.board = null;
+        audioEngine.playSfx("sfx.click", 0.6);
+        if (t >= 0 && (!this.playing || this.gameOver)) this.restartAt(t);
+        else if (t >= 0) { this.jumpTo(t); this.stepDeadline = now; }
+        else this.stepDeadline = now;
+        return;
+      }
+      return;
+    }
+    // Gép ellenében a gép lép; két játékos módban mindketten kattintotok
+    if (b.turn !== 1 && b.vsAI) return;
+    const cell = this.cellAt(px, py);
+    if (cell < 0 || b.grid[cell] !== 0) return;
+    this.placeMark(cell, b.turn);
+  }
+
+  private placeMark(cell: number, p: number) {
+    const b = this.board;
+    if (!b) return;
+    b.grid[cell] = p;
+    b.lastMove = cell;
+    audioEngine.playSfx(p === 1 ? "sfx.click" : "sfx.pop", 0.5);
+    if (this.boardWin(cell, p)) {
+      b.over = true;
+      b.winner = p;
+      this.vars[b.variable] = p;
+      if (p === 1) {
+        this.vars["score"] = (this.vars["score"] ?? 0) + 100;
+        audioEngine.playSfx("sfx.win", 0.8);
+        this.burst(W / 2, H * 0.2, 42, "#a3e635", 240);
+        this.emit(this.step, "Győztél a táblán! +100 pont", "logic");
+      } else {
+        audioEngine.playSfx("sfx.gameover", 0.7);
+        this.emit(this.step, b.vsAI ? "A gép nyerte a partit!" : "A 2. játékos nyert!", "warn");
+      }
+    } else if (b.grid.every((v) => v !== 0)) {
+      b.over = true;
+      b.winner = 3;
+      this.vars[b.variable] = 3;
+      this.vars["score"] = (this.vars["score"] ?? 0) + 25;
+      audioEngine.playSfx("sfx.chime", 0.7);
+      this.emit(this.step, "Döntetlen! +25 pont", "logic");
+    } else {
+      b.turn = p === 1 ? 2 : 1;
+      if (b.vsAI && b.turn === 2) b.aiAt = performance.now() + 550;
+    }
+  }
+
+  // Győztes sor ellenőrzése a (cell) mező körül
+  private boardWin(cell: number, p: number): boolean {
+    const b = this.board;
+    if (!b) return false;
+    const size = b.size, wl = b.winLen;
+    const r = Math.floor(cell / size), c = cell % size;
+    for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]] as const) {
+      let cnt = 1;
+      for (let s = 1; s < wl; s++) {
+        const rr = r + dr * s, cc = c + dc * s;
+        if (rr < 0 || rr >= size || cc < 0 || cc >= size || b.grid[rr * size + cc] !== p) break;
+        cnt++;
+      }
+      for (let s = 1; s < wl; s++) {
+        const rr = r - dr * s, cc = c - dc * s;
+        if (rr < 0 || rr >= size || cc < 0 || cc >= size || b.grid[rr * size + cc] !== p) break;
+        cnt++;
+      }
+      if (cnt >= wl) return true;
+    }
+    return false;
+  }
+
+  // Egyszerű, de okos gép: azonnal nyer, ha tud; blokkol, ha kell;
+  // egyébként a legígéretesebb mezőt választja (saját + ellenfél vonalak, középre törekvés).
+  private aiMove() {
+    const b = this.board;
+    if (!b || b.over || b.turn !== 2) return;
+    const size = b.size, wl = b.winLen;
+
+    const lineScore = (cell: number, p: number): number => {
+      const r = Math.floor(cell / size), c = cell % size;
+      let total = 0;
+      for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]] as const) {
+        let cnt = 1, open = 2;
+        for (let s = 1; s < wl; s++) {
+          const rr = r + dr * s, cc = c + dc * s;
+          if (rr < 0 || rr >= size || cc < 0 || cc >= size) { open--; break; }
+          const v = b.grid[rr * size + cc];
+          if (v === p) cnt++;
+          else { if (v !== 0) open--; break; }
+        }
+        for (let s = 1; s < wl; s++) {
+          const rr = r - dr * s, cc = c - dc * s;
+          if (rr < 0 || rr >= size || cc < 0 || cc >= size) { open--; break; }
+          const v = b.grid[rr * size + cc];
+          if (v === p) cnt++;
+          else { if (v !== 0) open--; break; }
+        }
+        if (cnt >= wl) return 1e9;
+        if (open > 0) total += cnt * cnt * cnt;
+      }
+      return total;
+    };
+
+    let best = -1, bestScore = -Infinity;
+    for (let cell = 0; cell < b.grid.length; cell++) {
+      if (b.grid[cell] !== 0) continue;
+      const own = lineScore(cell, 2);
+      const foe = lineScore(cell, 1);
+      if (own >= 1e9) { best = cell; break; } // azonnali győzelem
+      let score = own + foe * 0.85;
+      if (foe >= 1e9) score += 5e8; // blokkolás kényszer
+      const r = Math.floor(cell / size), c = cell % size;
+      const mid = (size - 1) / 2;
+      score -= (Math.abs(r - mid) + Math.abs(c - mid)) * 2; // középre törekvés
+      score += Math.random() * 4;
+      if (score > bestScore) { bestScore = score; best = cell; }
+    }
+    if (best >= 0) this.placeMark(best, 2);
   }
 
   private hit(a: Entity, b: Entity, factor: number): boolean {
@@ -1310,10 +1744,7 @@ export class RuntimeEngine {
     // HUD
     this.drawHud(ctx);
 
-    // Választó gombok (kvíz / menü)
-    if (this.activeChoice) this.drawChoice(ctx, now);
-
-    // Játék vége / győzelem réteg
+    // Játék vége / győzelem réteg (a menü/pontlista még fölé kerül)
     if (this.gameOver || (this.finished === "win")) {
       const win = this.finished === "win";
       ctx.fillStyle = win ? "rgba(10,26,6,0.72)" : "rgba(2,2,10,0.72)";
@@ -1335,10 +1766,20 @@ export class RuntimeEngine {
         ctx.font = "600 30px Geist, system-ui, sans-serif";
         ctx.fillText(`Végső pontszám: ${this.vars["score"] ?? 0}`, W / 2, H / 2 + 24);
       }
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "500 19px Geist, system-ui, sans-serif";
-      ctx.fillText("Nyomd meg újra a Lejátszás gombot az újrakezdéshez", W / 2, H / 2 + 66);
+      if (!this.hs) {
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "500 19px Geist, system-ui, sans-serif";
+        ctx.fillText("Nyomd meg újra a Lejátszás gombot az újrakezdéshez", W / 2, H / 2 + 66);
+      }
     }
+
+    // Választó gombok (kvíz / menü)
+    if (this.activeChoice) this.drawChoice(ctx, now);
+
+    // Rétegek: táblás játék → főmenü → pontlista (a pontlista legfelül)
+    if (this.board) this.drawBoard(ctx, now);
+    if (this.menu) this.drawMenu(ctx, now);
+    if (this.hs) this.drawHighscore(ctx);
 
     // Üres állapot
     if (!this.playing && this.bg.type === "none" && this.entities.length === 0) {
@@ -1400,6 +1841,225 @@ export class RuntimeEngine {
       ctx.fillStyle = "#09090f";
       ctx.font = "700 22px Geist, system-ui, sans-serif";
       ctx.fillText(c.options[i], bx + bwpx / 2, by + bhpx / 2);
+    }
+  }
+
+  // ---------- Főmenü / pontlista / tábla rajzolói ----------
+
+  // A menügombok téglalépei vászon-koordinátákban
+  private menuButtonRects(): { x: number; y: number; w: number; h: number }[] {
+    const m = this.menu;
+    if (!m) return [];
+    const bw = Math.min(460, W * 0.5), bh = 62, gap = 20;
+    const y0 = H * 0.42;
+    return m.options.map((_, i) => ({
+      x: (W - bw) / 2,
+      y: y0 + i * (bh + gap),
+      w: bw,
+      h: bh,
+    }));
+  }
+
+  private drawMenu(ctx: CanvasRenderingContext2D, now: number) {
+    const m = this.menu;
+    if (!m) return;
+    ctx.fillStyle = "rgba(9,9,15,0.8)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // cím
+    const pulse = 0.5 + Math.sin(now / 600) * 0.5;
+    ctx.fillStyle = "#fbbf24";
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 24 + pulse * 14;
+    ctx.font = "800 56px Geist, system-ui, sans-serif";
+    ctx.fillText(m.title.toUpperCase(), W / 2, H * 0.2);
+    ctx.shadowBlur = 0;
+    if (m.subtitle) {
+      ctx.fillStyle = "#e4e4e7";
+      ctx.font = "500 22px Geist, system-ui, sans-serif";
+      ctx.fillText(m.subtitle, W / 2, H * 0.31);
+    }
+    // gombok (egér fölött világítanak)
+    const rects = this.menuButtonRects();
+    const px = (this.pointerX / 100) * W;
+    const py = (this.pointerY / 100) * H;
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      const hover = px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+      ctx.fillStyle = hover ? "#fbbf24" : `rgba(251,191,36,${0.32 + i * 0.08})`;
+      ctx.strokeStyle = hover ? "#fde68a" : "rgba(251,191,36,0.65)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y, r.w, r.h, 14);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = hover ? "#09090f" : "#fde68a";
+      ctx.font = "700 26px Geist, system-ui, sans-serif";
+      ctx.fillText(m.options[i], r.x + r.w / 2, r.y + r.h / 2);
+    }
+    ctx.fillStyle = "#71717a";
+    ctx.font = "500 17px Geist, system-ui, sans-serif";
+    ctx.fillText("Kattints a kiválasztott gombra", W / 2, H * 0.92);
+  }
+
+  private drawHighscore(ctx: CanvasRenderingContext2D) {
+    const h = this.hs;
+    if (!h) return;
+    ctx.fillStyle = "rgba(9,9,15,0.9)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "800 42px Geist, system-ui, sans-serif";
+    ctx.fillText(h.title, W / 2, H * 0.13);
+    if (h.rows.length === 0) {
+      ctx.fillStyle = "#a1a1aa";
+      ctx.font = "500 24px Geist, system-ui, sans-serif";
+      ctx.fillText("Még nincs pontszám – legyél az első!", W / 2, H * 0.5);
+    } else {
+      const y0 = H * 0.24, lh = Math.min(40, (H * 0.58) / h.rows.length);
+      ctx.textAlign = "left";
+      for (let i = 0; i < h.rows.length; i++) {
+        const r = h.rows[i];
+        const y = y0 + i * lh;
+        const hl = i === h.savedIndex;
+        if (hl) {
+          ctx.fillStyle = "rgba(251,191,36,0.16)";
+          ctx.fillRect(W * 0.2, y - lh / 2 + 2, W * 0.6, lh - 4);
+        }
+        ctx.fillStyle = hl ? "#fbbf24" : "#d4d4d8";
+        ctx.font = hl ? "700 23px Geist, system-ui, sans-serif" : "500 22px Geist, system-ui, sans-serif";
+        ctx.fillText(`${i + 1}.  ${r.name}`, W * 0.24, y);
+        ctx.textAlign = "right";
+        ctx.fillText(`${r.score}`, W * 0.76, y);
+        if (hl) {
+          ctx.textAlign = "left";
+          ctx.fillStyle = "#fbbf24";
+          ctx.font = "600 15px Geist, system-ui, sans-serif";
+          ctx.fillText("← most", W * 0.78, y);
+        }
+        ctx.textAlign = "left";
+      }
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#71717a";
+    ctx.font = "500 18px Geist, system-ui, sans-serif";
+    ctx.fillText(h.target >= 0 ? "Kattints a visszatéréshez" : "Kattints a folytatáshoz", W / 2, H * 0.93);
+  }
+
+  private drawBoard(ctx: CanvasRenderingContext2D, now: number) {
+    const b = this.board;
+    if (!b) return;
+    ctx.fillStyle = "rgba(9,9,15,0.88)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Cím és sorrend-jelzés
+    ctx.fillStyle = "#e4e4e7";
+    ctx.font = "700 26px Geist, system-ui, sans-serif";
+    const label = b.winLen === 3 ? "3-soros" : `Amőba (${b.size}×${b.size}, ${b.winLen}-es)`;
+    ctx.fillText(`${label} – Te: X ${b.vsAI ? "· Gép: O" : "· 2. játékos: O"}`, W / 2, H * 0.085);
+
+    // Tábla
+    const r = this.boardRect();
+    ctx.fillStyle = "#18181b";
+    ctx.strokeStyle = "#52525b";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(r.x - 10, r.y - 10, r.side + 20, r.side + 20, 12);
+    ctx.fill();
+    ctx.stroke();
+    const cell = r.side / b.size;
+    ctx.strokeStyle = "rgba(82,82,91,0.55)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < b.size; i++) {
+      ctx.beginPath();
+      ctx.moveTo(r.x + i * cell, r.y);
+      ctx.lineTo(r.x + i * cell, r.y + r.side);
+      ctx.moveTo(r.x, r.y + i * cell);
+      ctx.lineTo(r.x + r.side, r.y + i * cell);
+      ctx.stroke();
+    }
+
+    // Egér alatti cella halvány jelzése
+    if (!b.over && b.turn === 1) {
+      const px = (this.pointerX / 100) * W;
+      const py = (this.pointerY / 100) * H;
+      const c = this.cellAt(px, py);
+      if (c >= 0 && b.grid[c] === 0) {
+        const cx = r.x + (c % b.size) * cell;
+        const cy = r.y + Math.floor(c / b.size) * cell;
+        ctx.fillStyle = "rgba(34,211,238,0.14)";
+        ctx.fillRect(cx, cy, cell, cell);
+      }
+    }
+
+    // Jelek
+    const pad = cell * 0.24;
+    for (let i = 0; i < b.grid.length; i++) {
+      const v = b.grid[i];
+      if (v === 0) continue;
+      const cx = r.x + (i % b.size) * cell + cell / 2;
+      const cy = r.y + Math.floor(i / b.size) * cell + cell / 2;
+      if (v === 1) {
+        ctx.strokeStyle = "#22d3ee";
+        ctx.lineWidth = Math.max(2.5, cell * 0.11);
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(cx - cell / 2 + pad, cy - cell / 2 + pad);
+        ctx.lineTo(cx + cell / 2 - pad, cy + cell / 2 - pad);
+        ctx.moveTo(cx + cell / 2 - pad, cy - cell / 2 + pad);
+        ctx.lineTo(cx - cell / 2 + pad, cy + cell / 2 - pad);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = "#fb7185";
+        ctx.lineWidth = Math.max(2.5, cell * 0.11);
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell / 2 - pad, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (i === b.lastMove) {
+        ctx.strokeStyle = "rgba(251,191,36,0.5)";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(r.x + (i % b.size) * cell + 1, r.y + Math.floor(i / b.size) * cell + 1, cell - 2, cell - 2);
+      }
+    }
+
+    // Állapotsáv / eredmény
+    if (!b.over) {
+      ctx.fillStyle = b.turn === 1 ? "#22d3ee" : "#fb7185";
+      ctx.font = "600 22px Geist, system-ui, sans-serif";
+      const dots = Math.floor(now / 400) % 3;
+      ctx.fillText(
+        b.turn === 1 ? "Te jössz (X) – kattints egy mezőre" : `${b.vsAI ? "A gép gondolkodik" : "2. játékos (O)"}${".".repeat(dots)}`,
+        W / 2, H * 0.945,
+      );
+    } else {
+      const msg = b.winner === 1 ? "GYŐZTÉL! +100 pont" : b.winner === 3 ? "Döntetlen! +25 pont" : (b.vsAI ? "A gép nyert!" : "A 2. játékos nyert!");
+      ctx.fillStyle = b.winner === 1 ? "#a3e635" : b.winner === 3 ? "#fbbf24" : "#f87171";
+      ctx.font = "800 34px Geist, system-ui, sans-serif";
+      ctx.fillText(msg, W / 2, H * 0.845);
+      const rb = this.boardButtonRects();
+      const px = (this.pointerX / 100) * W;
+      const py = (this.pointerY / 100) * H;
+      for (const [rect, text, col] of [
+        [rb.again, "Új játék", "#22d3ee"],
+        [rb.next, b.target >= 0 ? "Tovább →" : "Kilépés", "#fbbf24"],
+      ] as const) {
+        const hover = px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+        ctx.fillStyle = hover ? col : "rgba(24,24,27,0.9)";
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 12);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = hover ? "#09090f" : col;
+        ctx.font = "700 21px Geist, system-ui, sans-serif";
+        ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2);
+      }
     }
   }
 

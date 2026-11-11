@@ -38,6 +38,8 @@ export type BlockKind =
   | "pointer"       // egér/ujj követése
   | "click"         // kattintás-esemény aktiválása
   | "choice"        // választó gombok (kvíz / menü)
+  | "menu"          // teljes képernyős főmenü (a léptető megáll, míg választasz)
+  | "board"         // táblás játék: amőba / 3-soros (kattintásos, gép ellen is)
   | "counter"       // változó növelése
   | "check"         // feltételvizsgálat + akció
   | "jump"          // léptető ugrás
@@ -47,10 +49,11 @@ export type BlockKind =
   | "setvar"        // változó beállítása
   | "save"          // változók mentése
   | "load"          // változók betöltése
+  | "highscore"     // top-10 pontlista mentéssel/mutatással
   | "customImage"   // feltöltött kép
   | "customAudio";  // feltöltött hang
 
-// Az általános "Alak" blokk stílusai (57 db, mindegyik rajzolt) – ez a sprite-készlet,
+// Az általános "Alak" blokk stílusai (59 db, mindegyik rajzolt) – ez a sprite-készlet,
 // amiből a könyvtárban minden stílus külön húzható blokként is elérhető.
 export const SHAPE_STYLES = [
   // űr / klasszikus
@@ -64,7 +67,7 @@ export const SHAPE_STYLES = [
   "frog", "turtle", "whale", "octopus", "crab", "fish", "bird", "ghost",
   // tárgyak
   "car", "bomb", "coin", "balloon", "key", "potion", "shield", "sword", "crown",
-  "cake", "donut", "gift", "chest", "door", "house",
+  "cake", "donut", "gift", "chest", "door", "house", "flag", "castle",
 ] as const;
 export type ShapeStyle = (typeof SHAPE_STYLES)[number];
 

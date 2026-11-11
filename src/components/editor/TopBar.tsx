@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2 } from "lucide-react";
+import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2, LayoutGrid, Sword, MousePointerClick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function TopBar({
@@ -196,10 +196,22 @@ export function TopBar({
                 <FilePlus2 className="size-4" /> Új üres projekt
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("space")} className="gap-2">
-                <Rocket className="size-4" /> Demó: Űr-támadás (játék)
+                <Rocket className="size-4" /> Demó: Űr-támadás (lövöldözős)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("platform")} className="gap-2">
-                <Gamepad2 className="size-4" /> Demó: Ugrálós kaland (platformer)
+                <Gamepad2 className="size-4" /> Demó: Bunkyó kaland (Super Mario-szerű)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("galaga")} className="gap-2">
+                <Rocket className="size-4" /> Demó: Galaxi őrség (Galaga-szerű)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("board")} className="gap-2">
+                <LayoutGrid className="size-4" /> Demó: Amőba párbaj (táblás, gép ellen)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("rpg")} className="gap-2">
+                <Sword className="size-4" /> Demó: A Sárkány kardja (kaland-RPG)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("shooter")} className="gap-2">
+                <MousePointerClick className="size-4" /> Demó: Célbalövölde (FPS-stílus)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("chill")} className="gap-2">
                 <Moon className="size-4" /> Demó: Nyugodt éjszaka

@@ -27,7 +27,7 @@ export function shade(hex: string, percent: number): string {
 // ---------- Klasszikus űrkészlet (a motor örökölt fajtáihoz) ----------
 
 export function drawShipSprite(ctx: CanvasRenderingContext2D, s: number, color: string) {
-  ctx.rotate(Math.PI);
+  // Orrával felfelé néz (a lövedékek innen indulnak), a lángcsóva alul lobog.
   ctx.shadowColor = color;
   ctx.shadowBlur = 16;
   ctx.fillStyle = color;
@@ -378,6 +378,62 @@ export function drawSprite(ctx: CanvasRenderingContext2D, style: string, o: Spri
       ctx.fill();
       ctx.fillStyle = "#fef3c7";
       ctx.fillRect(-s * 0.1, s * 0.1, s * 0.2, s * 0.22);
+      break;
+    }
+    case "flag": {
+      // Rúd + hullámzó zászló + talp – pálya céljaként („célszalag”)
+      const wave = Math.sin((o.now ?? 0) / 220 + (o.id ?? 1)) * s * 0.045;
+      ctx.fillStyle = "#d6d3d1";
+      ctx.fillRect(-s * 0.04, -s * 0.5, s * 0.08, s);
+      ctx.beginPath();
+      ctx.arc(0, -s * 0.52, s * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = c;
+      ctx.shadowColor = c;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.04, -s * 0.48);
+      ctx.quadraticCurveTo(s * 0.3, -s * 0.42 + wave, s * 0.52, -s * 0.36 + wave * 0.5);
+      ctx.lineTo(s * 0.52, -s * 0.12 + wave * 0.5);
+      ctx.quadraticCurveTo(s * 0.3, -s * 0.18 + wave, s * 0.04, -s * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = shade(c, -45);
+      ctx.fillRect(-s * 0.3, s * 0.44, s * 0.6, s * 0.1);
+      break;
+    }
+    case "castle": {
+      // Tornyos kastély kapuval – szint végének díszeként
+      const w = s * 0.9, h = s * 0.75;
+      ctx.fillStyle = c;
+      ctx.fillRect(-w / 2, -h * 0.1, w, h * 0.75);
+      // pártázatok
+      const merlon = w / 7;
+      for (let i = 0; i < 7; i += 2) ctx.fillRect(-w / 2 + i * merlon, -h * 0.28, merlon, h * 0.2);
+      // tornyok
+      ctx.fillStyle = shade(c, -14);
+      ctx.fillRect(-w / 2 - s * 0.06, -h * 0.42, s * 0.2, h);
+      ctx.fillRect(w / 2 - s * 0.14, -h * 0.42, s * 0.2, h);
+      for (const tx of [-w / 2 - s * 0.06, w / 2 - s * 0.14]) {
+        for (let i = 0; i < 3; i += 2) ctx.fillRect(tx + i * (s * 0.2 / 3), -h * 0.56, s * 0.2 / 3, h * 0.16);
+      }
+      // kapu + zászlócskék
+      ctx.fillStyle = "#3f2d1d";
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.12, h * 0.62);
+      ctx.lineTo(-s * 0.12, h * 0.12);
+      ctx.arc(0, h * 0.12, s * 0.12, Math.PI, 0);
+      ctx.lineTo(s * 0.12, h * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(-s * 0.02, -h * 0.5, s * 0.04, s * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(s * 0.02, -h * 0.5);
+      ctx.lineTo(s * 0.2, -h * 0.44);
+      ctx.lineTo(s * 0.02, -h * 0.36);
+      ctx.closePath();
+      ctx.fill();
       break;
     }
     case "planet": {

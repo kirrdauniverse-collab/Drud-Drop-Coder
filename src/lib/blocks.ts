@@ -144,6 +144,8 @@ export const SPRITE_CATALOG: SpriteCatalogEntry[] = [
   { id: "gfx.sprite.chest", style: "chest", label: "Kincsesláda", description: "Fém pántos kincsesláda – nagy fogás a kalandoroknak!", icon: "Package", defaults: { style: "chest", role: "pickup", move: "static", x: 75, y: 75, size: 30, value: 30, color: "#b45309", sticky: true } },
   { id: "gfx.sprite.door", style: "door", label: "Ajtó", description: "Faajtó kilinccsel – célpont, dísz vagy színjelenet-elem.", icon: "DoorOpen", defaults: { style: "door", role: "deco", move: "static", x: 80, y: 75, size: 40, color: "#92400e", sticky: true } },
   { id: "gfx.sprite.house", style: "house", label: "Ház (dísz)", description: "Kis ház – városi és falusias színterekhez, célpontnak is jó.", icon: "Home", defaults: { style: "house", role: "deco", move: "static", x: 80, y: 78, size: 70, color: "#f97316", sticky: true } },
+  { id: "gfx.sprite.flag", style: "flag", label: "Zászló (cél)", description: "Célszalag-zászló – platformer pályák kitűzött céljaként: érjen hozzá a játékos!", icon: "Flag", defaults: { style: "flag", role: "deco", move: "static", x: 88, y: 55, size: 80, color: "#f43f5e", sticky: true } },
+  { id: "gfx.sprite.castle", style: "castle", label: "Kastély", description: "Tornyos kastély kapuval – szintek végén, mesékben, kingdoms építéséhez.", icon: "Crown", defaults: { style: "castle", role: "deco", move: "static", x: 86, y: 74, size: 90, color: "#a8a29e", sticky: true } },
 ];
 
 // A "Stílus" legördülő a katalógusból épül fel (a platform a kocka stílust használja)
@@ -969,6 +971,46 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
       { key: "sticky", label: "Ragadós (végig látszik)", type: "toggle", default: false, group: "Megjelenés" },
     ],
   },
+  {
+    id: "ui.menu",
+    label: "Főmenü (kezdőképernyő)",
+    description: "Teljes képernyős főmenü: cím, alcím és gombok. A léptetőfej MEGÁLL, míg a játékos választ – minden gomb beadhat egy lépés-ugrást (pl. Játék → 8. lépés, Pontlista → 2. lépés). Így lesz a kompozícióból igazi játék menüvel!",
+    category: "ui",
+    icon: "ListChecks",
+    kind: "menu",
+    defaultLength: 2,
+    group: "Menük és listák",
+    params: [
+      txt("title", "Cím", "A JÁTÉKOM", "Menü"),
+      txt("subtitle", "Alcím / szlogen", "Készült az AppMixerrel", "Menü"),
+      txt("options", "Gombok (vesszővel elválasztva)", "Játék,Pontlista", "Menü"),
+      txt("targets", "Ugrás lépésre gordonként (vesszővel)", "8,2", "Menü"),
+      txt("variable", "Változó neve (a gomb sorszámát kapja)", "menu", "Menü"),
+    ],
+  },
+  {
+    id: "ui.board",
+    label: "Táblás játék (amőba / 3-soros)",
+    description: "Kattintásos táblajáték teljes képernyőn: amőba (nagy pályán 5-ös sor) vagy klasszikus 3-soros (3×3). Játszhatod barát vagy okos gép ellen – a léptető a parti végéig megáll. Győzelem +100, döntetlen +25 pont, aztán „Tovább” gombbal mehetsz tovább (ugrással is).",
+    category: "ui",
+    icon: "LayoutGrid",
+    kind: "board",
+    defaultLength: 4,
+    group: "Menük és listák",
+    params: [
+      sel("mode", "Játék", "amoba", [
+        { value: "amoba", label: "Amőba (5-ös sor, nagy pálya)" },
+        { value: "3soros", label: "3-soros / tic-tac-toe (3×3)" },
+      ], "Tábla"),
+      num("size", "Pálya mérete (amőbánál)", 12, 5, 15, 1, "Tábla"),
+      sel("opponent", "Ellenfél", "ai", [
+        { value: "ai", label: "Gép (okos – nyer, blokkol, középre törekszik)" },
+        { value: "human", label: "Barát (felváltva kattintotok)" },
+      ], "Tábla"),
+      txt("variable", "Eredmény változó (1=győztél, 2=ellenfél, 3=döntetlen)", "tabla", "Tábla"),
+      num("target", "„Tovább” gomb: ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Tábla"),
+    ],
+  },
 
   // ---------- ADAT ----------
   {
@@ -1013,6 +1055,26 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     kind: "load",
     defaultLength: 1,
     params: [],
+  },
+  {
+    id: "data.highscore",
+    label: "Pontlista / toplista",
+    description: "Top-10 pontlista, ami megmarad a böngészőben. Mentés módban az aktuális pontszámot is berakja; a játék végén (ha van ilyen blokk a projektben) AUTOMATIKUSAN menti és mutatja. Kattintásra bezáródik, és ugorhat pl. vissza a főmenübe.",
+    category: "data",
+    icon: "Trophy",
+    kind: "highscore",
+    defaultLength: 2,
+    params: [
+      sel("mode", "Mód", "save", [
+        { value: "save", label: "Mentés + mutatás" },
+        { value: "show", label: "Csak mutatás" },
+        { value: "reset", label: "Lista törlése" },
+      ], "Toplista"),
+      txt("board", "Tábla neve (játékonként külön lista)", "jatekom", "Toplista"),
+      txt("title", "Lista címe", "TOP 10", "Toplista"),
+      txt("name", "Név (mentéskor)", "Játékos", "Toplista"),
+      num("target", "Bezáráskor ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Toplista"),
+    ],
   },
 ];
 

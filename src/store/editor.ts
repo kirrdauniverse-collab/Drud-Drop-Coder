@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { Block, Category, CustomAsset, Project, Track } from "@/lib/types";
 import { getBlockType, customImageTypeDef, customAudioTypeDef, BLOCK_TYPES } from "@/lib/blocks";
-import { demoSpaceProject, demoChillProject, demoPlatformProject, emptyProject, uid } from "@/lib/demo";
+import { demoSpaceProject, demoChillProject, demoPlatformProject, demoGalagaProject, demoBoardProject, demoRpgProject, demoShooterProject, emptyProject, uid } from "@/lib/demo";
 
 const LS_KEY = "appmixer.project.v1";
 
@@ -57,7 +57,7 @@ interface EditorState {
 
   loadProject: (p: Project, opts?: { silent?: boolean }) => void;
   newEmpty: () => void;
-  loadDemo: (which: "space" | "chill" | "platform") => void;
+  loadDemo: (which: "space" | "chill" | "platform" | "galaga" | "board" | "rpg" | "shooter") => void;
   undo: () => void;
   redo: () => void;
   clearHistory: () => void;
@@ -360,7 +360,15 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   newEmpty: () => get().loadProject(emptyProject()),
 
-  loadDemo: (which) => get().loadProject(which === "space" ? demoSpaceProject() : which === "platform" ? demoPlatformProject() : demoChillProject()),
+  loadDemo: (which) => get().loadProject(
+    which === "space" ? demoSpaceProject()
+      : which === "platform" ? demoPlatformProject()
+      : which === "galaga" ? demoGalagaProject()
+      : which === "board" ? demoBoardProject()
+      : which === "rpg" ? demoRpgProject()
+      : which === "shooter" ? demoShooterProject()
+      : demoChillProject(),
+  ),
 
   undo: () => {
     const { past, project } = get();
