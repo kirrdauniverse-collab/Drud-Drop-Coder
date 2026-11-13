@@ -70,7 +70,10 @@ export default function Home() {
       // (így nem indít el lejátszást vagy nem aktiválódik menüelem véletlenül).
       // Az Escape és a többi gyorsbillentyű ilyenkor is működik.
       const el = e.target as HTMLElement | null;
-      if (e.key === " " && el && (tag === "BUTTON" || el.closest("[role='menuitem']") || el.closest("[role='menu']"))) {
+      const closestSafe = (sel: string) => {
+        try { return el && typeof el.closest === "function" ? el.closest(sel) : null; } catch { return null; }
+      };
+      if (e.key === " " && el && (tag === "BUTTON" || closestSafe("[role='menuitem']") || closestSafe("[role='menu']"))) {
         return;
       }
       const ed = useEditor.getState();

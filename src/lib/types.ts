@@ -50,6 +50,7 @@ export type BlockKind =
   | "save"          // változók mentése
   | "load"          // változók betöltése
   | "highscore"     // top-10 pontlista mentéssel/mutatással
+  | "gamemode"      // teljes képernyős minijáték (FPS, verseny, féregcsata, építős, kaland, online)
   | "customImage"   // feltöltött kép
   | "customAudio";  // feltöltött hang
 

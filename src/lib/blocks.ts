@@ -1012,6 +1012,118 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     ],
   },
 
+  // ---------- JÁTÉKMÓDOK (teljes képernyős minijátékok) ----------
+  {
+    id: "game.fps",
+    label: "FPS labirintus (első személyű)",
+    description: "VALÓDI first-person shooter: 3D labirintus raycasting technológiával, üldöző szörnyekkel, minimappal és pisztollyal. WASD = mozgás, egér oldalra húzása vagy ←/→ = fordulás, kattintás/Szóköz = lövés. Küldetés: lövöld le az összes szörnyet!",
+    category: "ui",
+    icon: "Crosshair",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      sel("map", "Pálya", "bunker", [
+        { value: "bunker", label: "Bunker (tégla-labirintus)" },
+        { value: "erod", label: "Erőd (kő-fortress)" },
+        { value: "raktar", label: "Raktár (ládás útvesztő)" },
+      ], "Pálya"),
+      num("enemies", "Szörnyek száma", 8, 2, 16, 1, "Pálya"),
+      sel("difficulty", "Nehézség", "normal", [
+        { value: "easy", label: "Könnyű (lassú szörnyek)" },
+        { value: "normal", label: "Normál" },
+        { value: "hard", label: "Nehéz (gyors szörnyek)" },
+      ], "Pálya"),
+      num("timeLimit", "Időlimit másodpercben (0 = nincs)", 120, 0, 600, 10, "Pálya"),
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+  {
+    id: "game.race",
+    label: "Verseny (gokart, akár osztott képernyő)",
+    description: "Felülnézetes gokartverseny hullámos pályán: 3 kör, gépi ellenfelek, fű-büntetés. Két játékos módban OSZTOTT KÉPERNYŐ: 1. játékos WASD-val, 2. játékos nyilakkal versenyez!",
+    category: "ui",
+    icon: "Flag",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      sel("players", "Játékosok", "1", [
+        { value: "1", label: "1 játékos (gép ellen)" },
+        { value: "2", label: "2 játékos – OSZTOTT KÉPERNYŐ" },
+      ], "Verseny"),
+      num("laps", "Körök száma", 3, 1, 6, 1, "Verseny"),
+      num("rivals", "Gépi ellenfelek", 2, 0, 3, 1, "Verseny"),
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+  {
+    id: "game.worms",
+    label: "Féregcsata (Worms-szerű)",
+    description: "Kör alapú tüzérségi párbaj ROMBOLHATÓ tereppel, széllel, gránátfizikával és hátradobott féreggekkel! Zöld csapat: W/S szög, A/D mozgás, Szóköz (tartsd!) = tűz. Piros csapat: nyilak. Játszd le a másik csapatot!",
+    category: "ui",
+    icon: "Bomb",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      sel("opponent", "Ellenfél", "ai", [
+        { value: "ai", label: "Gép (szimulált célzás)" },
+        { value: "human", label: "Barát (felváltva játszotok)" },
+      ], "Csata"),
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+  {
+    id: "game.build",
+    label: "Építőmester (építős játék)",
+    description: "Kattintásos építőjáték: palettáról (1–8) választott elemekből építhetsz házat vagy kastélyt. Minden lerakott elem pontot ér, a kész cél nagy bónuszt hoz! Radír = 9.",
+    category: "ui",
+    icon: "Hammer",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      sel("goal", "Építési cél", "haz", [
+        { value: "haz", label: "Ház (8 fal, 4 tető, 1 ajtó, 2 ablak)" },
+        { value: "kastely", label: "Kastély (dupla akkora)" },
+        { value: "szabad", label: "Szabad építkezés (nincs cél)" },
+      ], "Cél"),
+      num("timeLimit", "Időlimit másodpercben (0 = nincs)", 0, 0, 600, 10, "Cél"),
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+  {
+    id: "game.adventure",
+    label: "Grafikus kaland (pont-és-kattint)",
+    description: "Jelenetek, vizsgálható pontok, leltár és tárgy-használat: kattints mindenre, gyűjtsd össze a kellő tárgyakat (kulcs, fáklya…), és érd el a történet végét!",
+    category: "ui",
+    icon: "Compass",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      sel("story", "Történet", "kastely", [
+        { value: "kastely", label: "A Kastély relikviája (3 jelenet)" },
+        { value: "urbazis", label: "Űrbázis rejtélye (2 jelenet)" },
+      ], "Történet"),
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+  {
+    id: "game.online",
+    label: "Online párbaj (űrhajó, 2 böngésző)",
+    description: "Valódi ONLINE kétjátékos mód: az egyik játékos szobát nyit (4 betűs kód), a másik egy másik böngészőből csatlakozik – aztán űrhajós párbaj: egér = mozgás, kattintás = lövés. 5 találat dönt!",
+    category: "ui",
+    icon: "Globe",
+    kind: "gamemode",
+    defaultLength: 2,
+    group: "Játékmódok",
+    params: [
+      num("target", "Végeztével ugorjon erre a lépésre (-1 = nincs)", -1, -1, 128, 1, "Vég"),
+    ],
+  },
+
   // ---------- ADAT ----------
   {
     id: "data.setvar",

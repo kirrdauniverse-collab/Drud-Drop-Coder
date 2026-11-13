@@ -39,15 +39,16 @@ export function demoSpaceProject(): Project {
     // Főmenü (0. lépés: a léptető megáll, míg választasz)
     block("ui.menu", "t-ui", 0, {
       title: "ŰR-TÁMADÁS",
-      subtitle: "Irányítsd a hajót, lődd a meteorokat, kapd el a hulló csillagokat!",
+      subtitle: "EGÉRREL is irányíthatod a hajót (követi), kattints a lövéshez – vagy nyilakkal/WASD!",
       options: "Indítás,Pontlista",
-      targets: "6,2",
+      targets: "5,2",
       variable: "menu",
     }, 2),
     // Pontlista a menüből (csak mutatás)
     block("data.highscore", "t-ui", 2, { mode: "show", board: "ur-tamadas", title: "ŰR-TÁMADÁS – TOP 10", target: 0 }, 2),
-    // Pontlista mentő blokk – a játék végén automatikusan ez fut le (a tömbben előrébb áll)
-    block("data.highscore", "t-data", 30, { mode: "save", board: "ur-tamadas", title: "ŰR-TÁMADÁS – TOP 10", name: "Pilóta", target: 0 }, 2),
+    // Pontlista mentő blokk – sosem fut le közvetlenül (a 4. lépésre sosem lépünk be):
+    // a játék végén a motor AUTOMATIKUSAN használja (win / élet elvesztésekor)
+    block("data.highscore", "t-data", 4, { mode: "save", board: "ur-tamadas", title: "ŰR-TÁMADÁS – TOP 10", name: "Pilóta", target: 0 }, 2),
 
     // Játék indítása a 6. lépésnél
     block("logic.clear", "t-logic", 6, { mode: "all" }, 1),
@@ -78,14 +79,18 @@ export function demoSpaceProject(): Project {
     block("sfx.swoosh", "t-sfx", 6, { volume: 60 }, 2),
     block("sfx.alarm", "t-sfx", 20, { volume: 50 }, 2),
     // Logika
-    block("logic.check", "t-logic", 28, { variable: "score", op: ">=", value: 60, action: "text", actionValue: "GYŐZTEL!", x: 50, y: 45 }, 1),
+    block("logic.check", "t-logic", 28, { variable: "score", op: ">=", value: 60, action: "win", actionValue: "Minden meteorot lelőttél – győztél!", x: 50, y: 45 }, 1),
     block("logic.counter", "t-logic", 31, { variable: "kör", delta: 1 }, 1),
-    // Bemenet
+    // A kör vége nem a MENÜBE fordul vissza, hanem új játékmenetet indít –
+    // így a hajtás csak győzelemnél vagy életvesztésnél ér véget
+    block("logic.jump", "t-logic", 31, { target: 6 }, 1),
+    // Bemenet: EGÉR-KÖVETÉS (a hajó a mutatót követi) + kattintásra lövés + billentyű alternatíva
+    block("input.pointer", "t-input", 6, { smooth: 55 }, 26),
     block("input.keyboard", "t-input", 6, { speed: 260 }, 26),
     block("input.click", "t-input", 6, { mode: "shoot" }, 26),
-    // Adat
-    block("data.setvar", "t-data", 6, { variable: "score", value: 0 }, 1),
-    block("data.lives", "t-data", 6, { value: 3 }, 1),
+    // Adat (az 5. lépésen: csak a MENŰBŐL indulva nullázódik, kör közben NEM)
+    block("data.setvar", "t-data", 5, { variable: "score", value: 0 }, 1),
+    block("data.lives", "t-data", 5, { value: 3 }, 1),
   ];
 
   return {
@@ -123,11 +128,12 @@ export function demoPlatformProject(): Project {
       title: "BUNKYÓ KALAND",
       subtitle: "Ugrálj, gyűjtsd az érméket, taposd a gombákat – érd el a zászlót!",
       options: "Indítás,Pontlista",
-      targets: "6,2",
+      targets: "5,2",
       variable: "menu",
     }, 2),
     block("data.highscore", "p-ui", 2, { mode: "show", board: "bunkyo", title: "BUNKYÓ KALAND – TOP 10", target: 0 }, 2),
-    block("data.highscore", "p-data", 30, { mode: "save", board: "bunkyo", title: "BUNKYÓ KALAND – TOP 10", name: "Ugráló", target: 0 }, 2),
+    // Mentő blokk rejtett lépésen – csak a motor automatikus mentése használja
+    block("data.highscore", "p-data", 4, { mode: "save", board: "bunkyo", title: "BUNKYÓ KALAND – TOP 10", name: "Ugráló", target: 0 }, 2),
 
     // Pálya a 6. lépésnél
     block("logic.clear", "p-logic", 6, { mode: "all" }, 1),
@@ -165,9 +171,11 @@ export function demoPlatformProject(): Project {
     // Logika: ha eleget gyűjtöttél, győzelem!
     block("logic.check", "p-logic", 26, { variable: "score", op: ">=", value: 45, action: "win", actionValue: "Elérted a zászlót – győztél!", x: 50, y: 50 }, 1),
     block("logic.counter", "p-logic", 31, { variable: "pálya", delta: 1 }, 1),
-    // Adat
-    block("data.setvar", "p-data", 6, { variable: "score", value: 0 }, 1),
-    block("data.lives", "p-data", 6, { value: 3 }, 1),
+    // Új játékmenet a kör végén (menü helyett)
+    block("logic.jump", "p-logic", 31, { target: 6 }, 1),
+    // Adat (csak a menüből indulva nullázódik)
+    block("data.setvar", "p-data", 5, { variable: "score", value: 0 }, 1),
+    block("data.lives", "p-data", 5, { value: 3 }, 1),
   ];
 
   return {
@@ -204,11 +212,12 @@ export function demoGalagaProject(): Project {
       title: "GALAXI ŐRSÉG",
       subtitle: "Galaga-stílus: hajtsd vissza a betolakodó rajt!",
       options: "Indítás,Pontlista",
-      targets: "6,2",
+      targets: "5,2",
       variable: "menu",
     }, 2),
     block("data.highscore", "g-ui", 2, { mode: "show", board: "galaxi", title: "GALAXI ŐRSÉG – TOP 10", target: 0 }, 2),
-    block("data.highscore", "g-data", 30, { mode: "save", board: "galaxi", title: "GALAXI ŐRSÉG – TOP 10", name: "Pilóta", target: 0 }, 2),
+    // Mentő blokk rejtett lépésen – a motor automatikus mentése használja
+    block("data.highscore", "g-data", 4, { mode: "save", board: "galaxi", title: "GALAXI ŐRSÉG – TOP 10", name: "Pilóta", target: 0 }, 2),
 
     block("logic.clear", "g-logic", 6, { mode: "all" }, 1),
     block("gfx.bg.preset", "g-gfx", 6, { preset: "space", dim: 12 }, 8),
@@ -239,11 +248,14 @@ export function demoGalagaProject(): Project {
     block("logic.check", "g-logic", 28, { variable: "score", op: ">=", value: 110, action: "win", actionValue: "A flotta visszaverve!", x: 50, y: 45 }, 1),
     block("gfx.effect.fireworks", "g-gfx", 28, { count: 4 }, 4),
     block("logic.counter", "g-logic", 31, { variable: "hullám", delta: 1 }, 1),
-    // Bemenet + adat
+    // Új hullám a kör végén (menü helyett)
+    block("logic.jump", "g-logic", 31, { target: 6 }, 1),
+    // Bemenet + adat (egér-követés + nyilak is jók)
+    block("input.pointer", "g-input", 6, { smooth: 60 }, 26),
     block("input.keyboard", "g-input", 6, { mode: "horizontal", speed: 300 }, 26),
     block("input.click", "g-input", 6, { mode: "shoot" }, 26),
-    block("data.setvar", "g-data", 6, { variable: "score", value: 0 }, 1),
-    block("data.lives", "g-data", 6, { value: 3 }, 1),
+    block("data.setvar", "g-data", 5, { variable: "score", value: 0 }, 1),
+    block("data.lives", "g-data", 5, { value: 3 }, 1),
   ];
 
   return {
@@ -417,13 +429,14 @@ export function demoShooterProject(): Project {
   const blocks: Block[] = [
     block("ui.menu", "s-ui", 0, {
       title: "CÉLBALÖVŐDE",
-      subtitle: "FPS-stílus: kattints az UFO-kra, ne engedd fel a lufikat!",
+      subtitle: "Kattints a célpontokra – az ágyú a kattintás pontjára lő!",
       options: "Indítás,Pontlista",
-      targets: "6,2",
+      targets: "5,2",
       variable: "menu",
     }, 2),
     block("data.highscore", "s-ui", 2, { mode: "show", board: "lovolde", title: "CÉLBALÖVŐDE – TOP 10", target: 0 }, 2),
-    block("data.highscore", "s-data", 29, { mode: "save", board: "lovolde", title: "CÉLBALÖVŐDE – TOP 10", name: "Lövész", target: 0 }, 2),
+    // Mentő blokk rejtett lépésen – a motor automatikus mentése használja
+    block("data.highscore", "s-data", 4, { mode: "save", board: "lovolde", title: "CÉLBALÖVŐDE – TOP 10", name: "Lövész", target: 0 }, 2),
 
     block("logic.clear", "s-logic", 6, { mode: "all" }, 1),
     block("gfx.bg.preset", "s-gfx", 6, { preset: "neon", dim: 10 }, 8),
@@ -445,10 +458,12 @@ export function demoShooterProject(): Project {
     block("logic.check", "s-logic", 28, { variable: "score", op: ">=", value: 90, action: "win", actionValue: "Mesterlövész vagy!", x: 50, y: 45 }, 1),
     block("gfx.effect.fireworks", "s-gfx", 28, { count: 4 }, 4),
     block("logic.counter", "s-logic", 31, { variable: "kör", delta: 1 }, 1),
-    // Bemenet + adat
+    // Új kör a végén (menü helyett)
+    block("logic.jump", "s-logic", 31, { target: 6 }, 1),
+    // Bemenet + adat (a reset csak a menüből indulva fut le)
     block("input.click", "s-input", 6, { mode: "shoot" }, 26),
-    block("data.setvar", "s-data", 6, { variable: "score", value: 0 }, 1),
-    block("data.lives", "s-data", 6, { value: 3 }, 1),
+    block("data.setvar", "s-data", 5, { variable: "score", value: 0 }, 1),
+    block("data.lives", "s-data", 5, { value: 3 }, 1),
   ];
 
   return {
@@ -460,6 +475,295 @@ export function demoShooterProject(): Project {
     stepCount: 32,
     tempoMs: 320,
     loop: true,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 7: BUNKER 3000 – VALÓDI első személyű FPS (raycasting 3D)
+// =====================================================================
+export function demoFpsProject(): Project {
+  const tracks: Track[] = [
+    track("f-ui", "Menü", "ui"),
+    track("f-logic", "Logika", "logic"),
+    track("f-music", "Zene", "sound", 0.6),
+    track("f-sfx", "Hangok", "sound", 0.8),
+    track("f-data", "Adat", "data"),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "f-ui", 0, {
+      title: "BUNKER 3000",
+      subtitle: "Első személyű lövöldöző – takarítsd ki a labirintust a szörnyektől!",
+      options: "Küldetés,Pontlista",
+      targets: "6,2",
+      variable: "menu",
+    }, 2),
+    block("data.highscore", "f-ui", 2, { mode: "show", board: "bunker3000", title: "BUNKER 3000 – TOP 10", target: 0 }, 2),
+    block("data.highscore", "f-data", 10, { mode: "save", board: "bunker3000", title: "BUNKER 3000 – TOP 10", name: "Tengerészgyalogos", target: 0 }, 2),
+
+    block("logic.clear", "f-logic", 6, { mode: "all" }, 1),
+    block("music.rock", "f-music", 6, { pattern: "power", volume: 55 }, 16),
+    block("sfx.alarm", "f-sfx", 6, { volume: 60 }, 2),
+    block("sfx.drumroll", "f-sfx", 7, { volume: 50 }, 2),
+    // A valódi FPS: 3D raycasting, 8 szörnnyel, 120 másodperc alatt!
+    block("game.fps", "f-logic", 7, { map: "bunker", enemies: 8, difficulty: "normal", timeLimit: 120, target: 0 }, 2),
+    block("data.setvar", "f-data", 6, { variable: "score", value: 0 }, 1),
+    block("data.lives", "f-data", 6, { value: 3 }, 1),
+  ];
+
+  return {
+    id: uid(),
+    name: "Bunker 3000 – FPS (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 8: GOKART NAGYDÍJ – verseny gépek ellen (felülnézet)
+// =====================================================================
+export function demoRaceProject(): Project {
+  const tracks: Track[] = [
+    track("v-ui", "Menü", "ui"),
+    track("v-logic", "Logika", "logic"),
+    track("v-music", "Zene", "sound", 0.65),
+    track("v-data", "Adat", "data"),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "v-ui", 0, {
+      title: "GOKART NAGYDÍJ",
+      subtitle: "WASD vagy nyilak – 3 kör, 2 gépi ellenfél, a fű lassít!",
+      options: "Rajt,Pontlista",
+      targets: "6,2",
+      variable: "menu",
+    }, 2),
+    block("data.highscore", "v-ui", 2, { mode: "show", board: "gokart", title: "GOKART NAGYDÍJ – TOP 10", target: 0 }, 2),
+    block("data.highscore", "v-data", 10, { mode: "save", board: "gokart", title: "GOKART NAGYDÍJ – TOP 10", name: "Versenyző", target: 0 }, 2),
+
+    block("logic.clear", "v-logic", 6, { mode: "all" }, 1),
+    block("music.disco", "v-music", 6, { volume: 60 }, 16),
+    // Verseny: 1 játékos, 3 kör, 2 gépi ellenfél
+    block("game.race", "v-logic", 7, { players: 1, laps: 3, rivals: 2, target: 0 }, 2),
+    block("data.setvar", "v-data", 6, { variable: "score", value: 0 }, 1),
+  ];
+
+  return {
+    id: uid(),
+    name: "Gokart nagydíj – verseny (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 9: OSZTOTT KÉPERNYŐS PÁRBAJ – verseny két játékossal
+// =====================================================================
+export function demoSplitProject(): Project {
+  const tracks: Track[] = [
+    track("o-ui", "Menü", "ui"),
+    track("o-logic", "Logika", "logic"),
+    track("o-music", "Zene", "sound", 0.6),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "o-ui", 0, {
+      title: "OSZTOTT KÉPERNYŐS PÁRBAJ",
+      subtitle: "Két játékos egy gépen! P1: WASD · P2: nyilak",
+      options: "Rajt",
+      targets: "6",
+      variable: "menu",
+    }, 2),
+    block("logic.clear", "o-logic", 6, { mode: "all" }, 1),
+    block("music.disco", "o-music", 6, { volume: 55 }, 16),
+    // OSZTOTT KÉPERNYŐS verseny: 2 játékos, 3 kör, 1 gépi ellenfél
+    block("game.race", "o-logic", 7, { players: 2, laps: 3, rivals: 1, target: 0 }, 2),
+  ];
+
+  return {
+    id: uid(),
+    name: "Osztott képernyős verseny (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 10: FÉREGCSATA – Worms-szerű rombolható terepű tüzérség
+// =====================================================================
+export function demoWormsProject(): Project {
+  const tracks: Track[] = [
+    track("w-ui", "Menü", "ui"),
+    track("w-logic", "Logika", "logic"),
+    track("w-music", "Zene", "sound", 0.55),
+    track("w-data", "Adat", "data"),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "w-ui", 0, {
+      title: "FÉREGCSATA",
+      subtitle: "Worms-stílus: gránát, szél, rombolható terep – döntsétek le a pirosakat!",
+      options: "Csata,Pontlista",
+      targets: "6,2",
+      variable: "menu",
+    }, 2),
+    block("data.highscore", "w-ui", 2, { mode: "show", board: "féregcsata", title: "FÉREGCSATA – TOP 10", target: 0 }, 2),
+    block("data.highscore", "w-data", 10, { mode: "save", board: "féregcsata", title: "FÉREGCSATA – TOP 10", name: "Féregparancsnok", target: 0 }, 2),
+
+    block("logic.clear", "w-logic", 6, { mode: "all" }, 1),
+    block("music.waltz", "w-music", 6, { chord: "minor", volume: 45 }, 16),
+    // Féregcsata gép ellen (human = barát)
+    block("game.worms", "w-logic", 7, { opponent: "ai", target: 0 }, 2),
+    block("data.setvar", "w-data", 6, { variable: "score", value: 0 }, 1),
+  ];
+
+  return {
+    id: uid(),
+    name: "Féregcsata (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 11: ÉPÍTŐMESTER – kattintgatós építős játék
+// =====================================================================
+export function demoBuilderProject(): Project {
+  const tracks: Track[] = [
+    track("e-ui", "Menü", "ui"),
+    track("e-logic", "Logika", "logic"),
+    track("e-music", "Zene", "sound", 0.55),
+    track("e-data", "Adat", "data"),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "e-ui", 0, {
+      title: "ÉPÍTŐMESTER",
+      subtitle: "Építs házat a paletta elemeiből (1–8) – ha készen vagy, nyomd meg a KÉSZ gombot!",
+      options: "Építés,Pontlista",
+      targets: "6,2",
+      variable: "menu",
+    }, 2),
+    block("data.highscore", "e-ui", 2, { mode: "show", board: "epitomester", title: "ÉPÍTŐMESTER – TOP 10", target: 0 }, 2),
+    block("data.highscore", "e-data", 10, { mode: "save", board: "epitomester", title: "ÉPÍTŐMESTER – TOP 10", name: "Építőmester", target: 0 }, 2),
+
+    block("logic.clear", "e-logic", 6, { mode: "all" }, 1),
+    block("music.chip", "e-music", 6, { tune: "happy", volume: 45 }, 16),
+    // Építős mód: ház-cél (8 fal, 4 tető, 1 ajtó, 2 ablak), időlimit nélkül
+    block("game.build", "e-logic", 7, { goal: "haz", timeLimit: 0, target: 0 }, 2),
+    block("data.setvar", "e-data", 6, { variable: "score", value: 0 }, 1),
+  ];
+
+  return {
+    id: uid(),
+    name: "Építőmester (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 12: A KASTÉLY RELIKVIÁJA – grafikus kaland (pont-és-kattint)
+// =====================================================================
+export function demoAdventureProject(): Project {
+  const tracks: Track[] = [
+    track("a-ui", "Menü", "ui"),
+    track("a-logic", "Logika", "logic"),
+    track("a-music", "Zene", "sound", 0.6),
+    track("a-data", "Adat", "data"),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "a-ui", 0, {
+      title: "A KASTÉLY RELIKVIÁJA",
+      subtitle: "Grafikus kaland: kattints mindenhová, gyűjts tárgyakat, hozd haza a relikviát!",
+      options: "Kaland,Pontlista",
+      targets: "6,2",
+      variable: "menu",
+    }, 2),
+    block("data.highscore", "a-ui", 2, { mode: "show", board: "kastely", title: "A KASTÉLY RELIKVIÁJA – TOP 10", target: 0 }, 2),
+    block("data.highscore", "a-data", 10, { mode: "save", board: "kastely", title: "A KASTÉLY RELIKVIÁJA – TOP 10", name: "Kalandor", target: 0 }, 2),
+
+    block("logic.clear", "a-logic", 6, { mode: "all" }, 1),
+    block("music.pad", "a-music", 6, { chord: "minor", volume: 50 }, 16),
+    block("music.arpeggio", "a-music", 8, { scale: "pentatonic", volume: 40 }, 8),
+    // Grafikus kaland: 3 jelenet, leltárral
+    block("game.adventure", "a-logic", 7, { story: "kastely", target: 0 }, 2),
+    block("data.setvar", "a-data", 6, { variable: "score", value: 0 }, 1),
+  ];
+
+  return {
+    id: uid(),
+    name: "A Kastély relikviája – kaland (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
+    masterVolume: 0.8,
+  };
+}
+
+// =====================================================================
+// Demó 13: ŰRPÁRBAJ ONLINE – valódi kétjátékos mód szerveren keresztül
+// =====================================================================
+export function demoOnlineProject(): Project {
+  const tracks: Track[] = [
+    track("n-ui", "Menü", "ui"),
+    track("n-logic", "Logika", "logic"),
+    track("n-music", "Zene", "sound", 0.5),
+  ];
+
+  const blocks: Block[] = [
+    block("ui.menu", "n-ui", 0, {
+      title: "ŰRPÁRBAJ ONLINE",
+      subtitle: "Valódi online párbaj: nyiss szobát, és a barátod egy másik böngészőből csatlakozik a kóddal!",
+      options: "Párbaj",
+      targets: "6",
+      variable: "menu",
+    }, 2),
+    block("logic.clear", "n-logic", 6, { mode: "all" }, 1),
+    block("music.beat", "n-music", 6, { pattern: "techno", volume: 50 }, 16),
+    // Online párbaj a duel-szerveren át
+    block("game.online", "n-logic", 7, { target: 0 }, 2),
+  ];
+
+  return {
+    id: uid(),
+    name: "Űrpárbaj online (demó)",
+    tracks,
+    blocks,
+    assets: [],
+    stepCount: 16,
+    tempoMs: 300,
+    loop: false,
     masterVolume: 0.8,
   };
 }

@@ -3,6 +3,7 @@ import { getBlockType } from "./blocks";
 import { audioEngine } from "./audio";
 import { drawSprite, drawShipSprite, drawMeteorSprite, drawStarSprite, drawCloudSprite, shade } from "./sprites";
 import { drawBgPreset, bgPresetLabel } from "./backgrounds";
+import { createGameMode, type GameCtx, type GameMode } from "./games";
 
 // ===== Futtató motor =====
 // Amikor a léptetőfej elér egy blokkot, a motor "kilövi" annak hatását:
@@ -159,6 +160,8 @@ export class RuntimeEngine {
   private menu: MenuState | null = null;
   private hs: HighscoreState | null = null;
   private board: BoardState | null = null;
+  // Teljes képernyős játékmód (FPS, verseny, féregcsata, építős, kaland, online párbaj)
+  private game: GameMode | null = null;
   private spawners: {
     until: number; nextAt: number; everyMs: number;
     spec: { style: string; role: string; move: string; speed: number; size: number; color: string; value: number; randomX: boolean; dir: number; alpha: number; spin: boolean; count: number };
@@ -235,6 +238,7 @@ export class RuntimeEngine {
     this.keyboardUntil = 0;
     this.clickUntil = 0;
     this.pointerUntil = 0;
+    this.clearGame();
     this.kbMode = "free";
     this.step = 0;
     this.jumpGuard = 0;
@@ -259,20 +263,81 @@ export class RuntimeEngine {
     this.menu = null;
     this.hs = null;
     this.board = null;
+    this.clearGame();
     this.onStep(0);
     audioEngine.stopAll();
     this.emit(0, "Megállítva – a képernyő tartalma megmarad", "info");
   }
 
+  // Aktív játékmód leállítása (socket stb. felszabadítása)
+  private clearGame() {
+    if (this.game) {
+      try { this.game.destroy?.(); } catch { /* már lezárva */ }
+      this.game = null;
+    }
+  }
+
+  // A játékmódok visszahívási környezete
+  private gameCtx(): GameCtx {
+    return {
+      keys: this.keys,
+      pointer: () => ({ x: this.pointerX, y: this.pointerY }),
+      vars: this.vars,
+      emit: (label, tone = "info") => this.emit(this.step, label, tone),
+      addScore: (n) => { this.vars["score"] = (this.vars["score"] ?? 0) + n; },
+      lives: () => this.vars["lives"] ?? 3,
+      loseLife: () => {
+        this.vars["lives"] = Math.max(0, (this.vars["lives"] ?? 3) - 1);
+        this.flash = { color: "#ef4444", t: 0.5 };
+        this.shake = 12;
+        audioEngine.playSfx("sfx.hurt", 0.8);
+        this.emit(this.step, `Találat értek! Életek: ${this.vars["lives"]}`, "warn");
+        if (this.vars["lives"] <= 0) {
+          this.gameOver = true;
+          this.clearGame();
+          this.playing = false;
+          this.paused = false;
+          this.onGameOver(this.vars["score"] ?? 0);
+          this.autoHighscore();
+          this.emit(this.step, "JÁTÉK VÉGE", "warn");
+          return true;
+        }
+        return false;
+      },
+      sfx: (name, vol = 0.7) => audioEngine.playSfx(name, vol),
+      burst: (x, y, count, color, speed = 180) => this.burst(x, y, count, color, speed),
+      finish: (win, label, target) => {
+        this.clearGame();
+        this.finished = win ? "win" : "lose";
+        this.finishLabel = label;
+        this.playing = false;
+        this.paused = false;
+        if (win) {
+          audioEngine.playSfx("sfx.win", 0.9);
+          for (let i = 0; i < 3; i++) {
+            setTimeout(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
+          }
+          this.emit(this.step, `GYŐZELEM: ${label}`, "logic");
+        } else {
+          audioEngine.playSfx("sfx.gameover", 0.9);
+          this.emit(this.step, `Játék vége: ${label}`, "warn");
+        }
+        this.onGameOver(this.vars["score"] ?? 0);
+        this.autoHighscore();
+        if (target >= 0 && this.hs === null) this.restartAt(target);
+      },
+    };
+  }
+
   // Van-e épp teljes képernyős réteg (menü / pontlista / táblás játék)?
   // A Előnézet panel ez alapján rejti el a ▶ gombot, hogy a rétegre lehessen kattintani.
   overlayActive(): boolean {
-    return this.menu !== null || this.hs !== null || this.board !== null;
+    return this.menu !== null || this.hs !== null || this.board !== null || this.game !== null;
   }
 
-  // Álljon-e a léptető? (Rétegek + választó gombok alatt megvárjuk a játékost.)
+  // Álljon-e a léptető? (Rétegek + választó gombok + játékmódok alatt megvárjuk a játékost.)
   private stepPaused(now: number): boolean {
-    return this.menu !== null || this.hs !== null || this.board !== null
+    return this.menu !== null || this.hs !== null || this.board !== null || this.game !== null
       || (this.activeChoice !== null && now < this.activeChoice.until);
   }
 
@@ -347,6 +412,11 @@ export class RuntimeEngine {
     // 3) Táblás játék (amőba / 3-soros)
     if (this.board) {
       this.boardClick(xPct, yPct);
+      return;
+    }
+    // 3b) Teljes képernyős játékmód (FPS, verseny, építős, kaland, online…)
+    if (this.game) {
+      this.game.click(xPct, yPct, now);
       return;
     }
     if (!this.playing || this.paused) return;
@@ -570,8 +640,13 @@ export class RuntimeEngine {
       this.stepDeadline = now;
     }
 
-    this.update(dt, now);
-    this.render(now);
+    try {
+      this.update(dt, now);
+      this.render(now);
+    } catch (err) {
+      // Egy esetleges hiba sose állítsa le végleg a rajzoló hurkot
+      console.error("AppMixer motor hiba:", err);
+    }
     this.raf = requestAnimationFrame(this.loop);
   };
 
@@ -881,6 +956,13 @@ export class RuntimeEngine {
         );
         break;
       }
+      case "gamemode": {
+        // Teljes képernyős minijáték: a léptető megáll, míg a játékos játszik
+        this.clearGame();
+        this.game = createGameMode(b.typeId, pr, this.gameCtx());
+        this.emit(b.start, `${def?.label ?? "Játékmód"} indul – a léptető megáll, míg játszol`, "logic");
+        break;
+      }
       case "finish": {
         const mode = String(pr.mode ?? "win") === "lose" ? "lose" : "win";
         this.finished = mode;
@@ -1102,6 +1184,7 @@ export class RuntimeEngine {
     this.finished = null;
     this.finishLabel = "";
     this.invulnUntil = 0;
+    this.clearGame();
     this.playing = true;
     this.paused = false;
     this.jumpTo(step);
@@ -1167,8 +1250,21 @@ export class RuntimeEngine {
     const player = this.getPlayer();
     const kbActive = now < this.keyboardUntil;
 
+    // ===== Teljes képernyős játékmód (FPS, verseny, féregcsata, építős, kaland, online) =====
+    if (this.game) {
+      const g = this.game;
+      g.update(dt, now);
+      // A játék a saját update-je alatt is véget érhet (pl. végzetes találat) –
+      // akkor a this.game már null; csak akkor kérdezzük meg, ha még él.
+      if (this.game === g && g.isDone()) {
+        this.clearGame();
+        this.stepDeadline = now;
+        this.emit(this.step, "Játékmód vége – a léptető megy tovább", "logic");
+      }
+    }
+
     // ===== Játékos mozgása =====
-    if (player && !this.gameOver) {
+    if (!this.game && player && !this.gameOver) {
       // Egér/ujj követése
       if (now < this.pointerUntil) {
         const k = Math.min(1, (this.pointerSmooth / 100) * dt * 12);
@@ -1234,7 +1330,7 @@ export class RuntimeEngine {
     }
 
     // ===== Rendszeres megjelenítők (spawner) =====
-    for (const sp of this.spawners) {
+    if (!this.game) for (const sp of this.spawners) {
       while (now >= sp.nextAt && now < sp.until) {
         const s = sp.spec;
         const roleRaw = s.role;
@@ -1265,7 +1361,7 @@ export class RuntimeEngine {
     this.spawners = this.spawners.filter((sp) => now < sp.until);
 
     // ===== Időjárás részecskék (eső / hó) =====
-    if (this.weather && this.playing) {
+    if (this.weather && this.playing && !this.game) {
       const perSec = Math.round(40 + this.weatherStrength * 120);
       const count = Math.max(1, Math.round(perSec * dt));
       for (let i = 0; i < count; i++) {
@@ -1288,6 +1384,14 @@ export class RuntimeEngine {
     // ===== Entitások mozgása (mozgás-viselkedés szerint) =====
     for (const e of this.entities) {
       if (e.role === "player") continue;
+      // Lövedékek: mindig a sebességvektoruk szerint REPÜLNEK (a move mező
+      // nem számít – korábban ezért "álltak meg" a lövések a hajó orránál!)
+      if (e.role === "projectile") {
+        e.x += (e.vx * dt / W) * 100;
+        e.y += (e.vy * dt / H) * 100;
+        if (e.life !== null) e.life -= dt * 1000;
+        continue;
+      }
       switch (e.move) {
         case "chase": {
           if (player && !this.gameOver) {
@@ -1363,7 +1467,7 @@ export class RuntimeEngine {
     });
 
     // ===== Ütközések =====
-    if (!this.gameOver) {
+    if (!this.gameOver && !this.game) {
       const projectiles = this.entities.filter((e) => e.role === "projectile");
       for (const proj of [...projectiles]) {
         for (const enemy of this.entities.filter((e) => e.role === "enemy")) {
@@ -1697,19 +1801,39 @@ export class RuntimeEngine {
             rotation: e.spin ? e.rotation : 0, poly: e.poly,
           });
           break;
-        case "projectile":
-          ctx.fillStyle = e.color;
+        case "projectile": {
+          // fényes lövedék: fej + mozgásirányú csóva – jól LÁTSZÓDJON
+          const sp = Math.hypot(e.vx, e.vy);
+          if (sp > 40) {
+            const nx = e.vx / sp, ny = e.vy / sp;
+            const tl = Math.min(46, sp * 0.06);
+            const grad = ctx.createLinearGradient(0, 0, -nx * tl, -ny * tl);
+            grad.addColorStop(0, e.color);
+            grad.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = e.size * 0.7;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-nx * tl, -ny * tl);
+            ctx.stroke();
+          }
+          ctx.fillStyle = "#fff7ed";
           ctx.shadowColor = e.color;
-          ctx.shadowBlur = 14;
+          ctx.shadowBlur = 16;
           ctx.beginPath();
           ctx.arc(0, 0, e.size / 2, 0, Math.PI * 2);
           ctx.fill();
           break;
+        }
       }
       ctx.restore();
     }
 
-    // Részecskék
+    // ===== Teljes képernyős játékmód (FPS, verseny, féregcsata, építős, kaland, online) =====
+    if (this.game) this.game.render(ctx, now);
+
+    // Részecskék (a játékmód robbanásai is ide kerülnek – a játék FÖLÉ)
     for (const p of this.particles) {
       const a = Math.max(0, p.life / p.maxLife);
       ctx.globalAlpha = a;

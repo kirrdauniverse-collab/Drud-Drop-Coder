@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2, LayoutGrid, Sword, MousePointerClick } from "lucide-react";
+import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2, LayoutGrid, Sword, MousePointerClick, Crosshair, Flag, Columns2, Bomb, Hammer, Compass, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function TopBar({
@@ -196,7 +196,7 @@ export function TopBar({
                 <FilePlus2 className="size-4" /> Új üres projekt
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("space")} className="gap-2">
-                <Rocket className="size-4" /> Demó: Űr-támadás (lövöldözős)
+                <Rocket className="size-4" /> Demó: Űr-támadás (lövöldözős · egér)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("platform")} className="gap-2">
                 <Gamepad2 className="size-4" /> Demó: Bunkyó kaland (Super Mario-szerű)
@@ -211,7 +211,29 @@ export function TopBar({
                 <Sword className="size-4" /> Demó: A Sárkány kardja (kaland-RPG)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("shooter")} className="gap-2">
-                <MousePointerClick className="size-4" /> Demó: Célbalövölde (FPS-stílus)
+                <MousePointerClick className="size-4" /> Demó: Célbalövölde (célba lövögetős)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem onClick={() => loadDemo("fps")} className="gap-2">
+                <Crosshair className="size-4" /> Demó: Bunker 3000 (VALÓDI FPS, 3D!)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("race")} className="gap-2">
+                <Flag className="size-4" /> Demó: Gokart nagydíj (verseny)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("split")} className="gap-2">
+                <Columns2 className="size-4" /> Demó: Osztott képernyős verseny (2 játékos)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("worms")} className="gap-2">
+                <Bomb className="size-4" /> Demó: Féregcsata (Worms-szerű)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("builder")} className="gap-2">
+                <Hammer className="size-4" /> Demó: Építőmester (építős játék)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("adventure")} className="gap-2">
+                <Compass className="size-4" /> Demó: A Kastély relikviája (grafikus kaland)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => loadDemo("online")} className="gap-2">
+                <Globe className="size-4" /> Demó: Űrpárbaj ONLINE (többjátékos)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => loadDemo("chill")} className="gap-2">
                 <Moon className="size-4" /> Demó: Nyugodt éjszaka

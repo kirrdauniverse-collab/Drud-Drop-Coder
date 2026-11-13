@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { Block, Category, CustomAsset, Project, Track } from "@/lib/types";
 import { getBlockType, customImageTypeDef, customAudioTypeDef, BLOCK_TYPES } from "@/lib/blocks";
-import { demoSpaceProject, demoChillProject, demoPlatformProject, demoGalagaProject, demoBoardProject, demoRpgProject, demoShooterProject, emptyProject, uid } from "@/lib/demo";
+import { demoSpaceProject, demoChillProject, demoPlatformProject, demoGalagaProject, demoBoardProject, demoRpgProject, demoShooterProject, demoFpsProject, demoRaceProject, demoSplitProject, demoWormsProject, demoBuilderProject, demoAdventureProject, demoOnlineProject, emptyProject, uid } from "@/lib/demo";
 
 const LS_KEY = "appmixer.project.v1";
 
@@ -57,7 +57,7 @@ interface EditorState {
 
   loadProject: (p: Project, opts?: { silent?: boolean }) => void;
   newEmpty: () => void;
-  loadDemo: (which: "space" | "chill" | "platform" | "galaga" | "board" | "rpg" | "shooter") => void;
+  loadDemo: (which: "space" | "chill" | "platform" | "galaga" | "board" | "rpg" | "shooter" | "fps" | "race" | "split" | "worms" | "builder" | "adventure" | "online") => void;
   undo: () => void;
   redo: () => void;
   clearHistory: () => void;
@@ -367,6 +367,13 @@ export const useEditor = create<EditorState>((set, get) => ({
       : which === "board" ? demoBoardProject()
       : which === "rpg" ? demoRpgProject()
       : which === "shooter" ? demoShooterProject()
+      : which === "fps" ? demoFpsProject()
+      : which === "race" ? demoRaceProject()
+      : which === "split" ? demoSplitProject()
+      : which === "worms" ? demoWormsProject()
+      : which === "builder" ? demoBuilderProject()
+      : which === "adventure" ? demoAdventureProject()
+      : which === "online" ? demoOnlineProject()
       : demoChillProject(),
   ),
 

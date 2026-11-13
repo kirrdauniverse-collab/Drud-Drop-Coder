@@ -40,17 +40,24 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </section>
 
           <section>
-            <h3 className="font-bold text-amber-300 mb-2">Hét kész demójáték – a Projekt menüben</h3>
+            <h3 className="font-bold text-amber-300 mb-2">Tizennégy kész demójáték – a Projekt menüben</h3>
             <ul className="space-y-1.5 text-[13px] list-disc list-inside">
-              <li><b>Űr-támadás</b> – lövöldözős: zuhanó meteorok, hulló csillagok, toplista.</li>
+              <li><b>Űr-támadás</b> – lövöldözős: zuhanó meteorok, hulló csillagok, toplista; <b>egérrel</b> is irányítható!</li>
               <li><b>Bunkyó kaland</b> – Super Mario-szerű platformer ugrálással, fejről taposással, zászlós céllal.</li>
               <li><b>Galaxi őrség</b> – Galaga-stílus: vízszintes irányítás, keringő UFO-k, hullámok.</li>
               <li><b>Amőba párbaj</b> – nagy pályás ötös sor okos gép vagy barát ellen.</li>
               <li><b>A Sárkány kardja</b> – kaland-RPG ágazatos történettel és varázskvízzel.</li>
-              <li><b>Célbalövölde</b> – FPS-stílusú lövögetés keringő célpontokkal.</li>
+              <li><b>Célbalövölde</b> – lövögetés keringő célpontokkal és felszálló lufikkal.</li>
+              <li><b>Bunker 3000</b> – <b>VALÓDI FPS</b>: 3D labirintus raycasting motorral, üldöző szörnyekkel, minimappal!</li>
+              <li><b>Gokart nagydíj</b> – felülnézetes verseny gépi ellenfelekkel.</li>
+              <li><b>Osztott képernyős párbaj</b> – verseny <b>KÉT játékossal</b> egy gépen (P1: WASD, P2: nyilak).</li>
+              <li><b>Féregcsata</b> – Worms-szerű: rombolható terep, szél, gránátfizika, okos gép.</li>
+              <li><b>Építőmester</b> – építős játék: házat vagy kastélyt rakhatsz téglából, tetőből, ajtóból.</li>
+              <li><b>A Kastély relikviája</b> – grafikus kaland: jelenetek, leltár, tárgyhasználat.</li>
+              <li><b>Űrpárbaj ONLINE</b> – valódi többjátékos mód: nyiss szobát, és a barátod egy másik böngészőből csatlakozik!</li>
               <li><b>Nyugodt éjszaka</b> – nem játék, hanem hangulat-alkalmazás.</li>
             </ul>
-            <p className="text-[12px] text-zinc-500 mt-1.5">Mindegyik főmenűvel indul (Főmenü blokk), Top-10 pontlistával (Pontlista blokk) zárul, és a végén kattintva visszatér a menübe – épp úgy, mint egy igazi játék.</p>
+            <p className="text-[12px] text-zinc-500 mt-1.5">Mindegyik főmenűvel indul (Főmenü blokk), Top-10 pontlistával (Pontlista blokk) zárul, és a végén kattintva visszatér a menübe – épp úgy, mint egy igazi játék. Az új játékmódok (FPS, verseny, féregcsata, építős, kaland, online) a könyvtár <b>App → Játékmódok</b> csoportjában saját blokkokként is elérhetők – berakva bármelyik saját projektbe.</p>
           </section>
 
           <section>
@@ -71,7 +78,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               <li><span className="text-emerald-300 font-semibold">Hang</span> – <b>25 szintetizált hanghatás</b> (lézer, csobbanás, doboszló, telefon…) és <b>14 zenei loop</b> (rock, chiptune, szamba, reggae, altatódal…). A ▸ gombbal a könyvtárban azonnal meghallgathatod őket; a blokk hossza a hangzás hossza.</li>
               <li><span className="text-violet-300 font-semibold">Logika</span> – számlálók, feltételek, ugrások, rendszeres megjelenítés, győzelem/játék vége.</li>
               <li><span className="text-amber-300 font-semibold">Bemenet</span> – három irányítási mód: szabad, <b>ugrálás</b> (gravitáció + platformok + fejre-taposás!), csak vízszintes; plusz egérkövetés és kattintás-események.</li>
-              <li><span className="text-lime-300 font-semibold">App</span> – <b>Főmenü</b> (cím + gombok, ugrásokkal – a léptető megvárja a választást), <b>táblás játék</b> (amőba / 3-soros, gép ellen is), választó gombok (kvízekhez) és beszédbuborék.</li>
+              <li><span className="text-lime-300 font-semibold">App</span> – <b>Főmenü</b> (cím + gombok, ugrásokkal – a léptető megvárja a választást), <b>táblás játék</b> (amőba / 3-soros, gép ellen is), választó gombok (kvízekhez), beszédbuborék, és a <b>Játékmódok</b>: FPS labirintus, verseny (osztott képernyővel!), féregcsata, építős, grafikus kaland és online párbaj – teljes képernyős minijátékok, amelyek a blokk ideje alatt futnak.</li>
               <li><span className="text-rose-300 font-semibold">Adat</span> – változók, életek, pontok, mentés/betöltés és <b>Pontlista</b> (top-10 a böngészőben, a játék végén automatikusan menti).</li>
               <li><span className="text-orange-300 font-semibold">Saját</span> – a feltöltött képeid és hangjaid, szintén blokkmá alakítva.</li>
             </ul>
