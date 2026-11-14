@@ -57,3 +57,6 @@ server.log
 # sandbox lokális fájlok
 db/
 tool-results/
+
+# GitHub token (soha ne commitoljuk)
+.github-token-store
