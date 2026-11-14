@@ -175,6 +175,9 @@ export class RuntimeEngine {
   private onGameOver: (score: number) => void;
   private imageCache = new Map<string, HTMLImageElement>();
   private starfield: { x: number; y: number; r: number; tw: number }[] = [];
+  // Nyomon követett setTimeout-ek: destroy()/stop() letörli őket, nem marad árva timer (memóriaszivárgás-védő)
+  private timers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     getProject: () => Project,
@@ -208,9 +211,34 @@ export class RuntimeEngine {
   }
 
   destroy() {
+    if (this.destroyed) return; // dupla destroy elleni védelem
+    this.destroyed = true;
+    this.playing = false;
+    this.paused = false;
     cancelAnimationFrame(this.raf);
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
+    this.clearTimers();
+    this.clearGame(); // játékmód (pl. online socket) felszabadítása
+    try { audioEngine.stopAll(); } catch { /* már csendben van */ }
+    this.entities = [];
+    this.particles = [];
+    this.imageCache.clear();
+  }
+
+  // Követett setTimeout – a callback lezárt motornál már nem fut
+  private later(fn: () => void, ms: number) {
+    const t = setTimeout(() => {
+      this.timers.delete(t);
+      if (!this.destroyed) fn();
+    }, ms);
+    this.timers.add(t);
+    return t;
+  }
+
+  private clearTimers() {
+    for (const t of this.timers) clearTimeout(t);
+    this.timers.clear();
   }
 
   // ---------- Irányítás ----------
@@ -263,6 +291,7 @@ export class RuntimeEngine {
     this.menu = null;
     this.hs = null;
     this.board = null;
+    this.clearTimers();
     this.clearGame();
     this.onStep(0);
     audioEngine.stopAll();
@@ -315,7 +344,7 @@ export class RuntimeEngine {
         if (win) {
           audioEngine.playSfx("sfx.win", 0.9);
           for (let i = 0; i < 3; i++) {
-            setTimeout(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
+            this.later(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
           }
           this.emit(this.step, `GYŐZELEM: ${label}`, "logic");
         } else {
@@ -671,7 +700,9 @@ export class RuntimeEngine {
         if (b.trackId !== track.id || b.start !== step) continue;
         try {
           this.applyBlock(b, track, p);
-        } catch {
+        } catch (err) {
+          // Ne nyeljük el teljesen: fejlesztéskor látszódjon a konzolon is, mi pattant el
+          console.error("AppMixer: blokk futtatási hiba:", b.typeId, err);
           this.emit(step, "Hiba egy blokk futtatásakor", "warn");
         }
       }
@@ -803,7 +834,7 @@ export class RuntimeEngine {
             const fx = W * (0.15 + Math.random() * 0.7);
             const fy = H * (0.15 + Math.random() * 0.5);
             const hue = Math.floor(Math.random() * 360);
-            setTimeout(() => this.burst(fx, fy, 34, `hsl(${hue} 90% 65%)`, 240), i * 350);
+            this.later(() => this.burst(fx, fy, 34, `hsl(${hue} 90% 65%)`, 240), i * 350);
           }
         } else if (b.typeId === "gfx.effect.rain") {
           this.weather = String(pr.mode ?? "on") === "on" ? "rain" : null;
@@ -973,7 +1004,7 @@ export class RuntimeEngine {
           this.vars["score"] = (this.vars["score"] ?? 0);
           audioEngine.playSfx("sfx.win", 0.9, vol);
           for (let i = 0; i < 3; i++) {
-            setTimeout(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
+            this.later(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
           }
           this.emit(b.start, `GYŐZELEM: ${this.finishLabel}`, "logic");
         } else {
@@ -1063,7 +1094,7 @@ export class RuntimeEngine {
             this.paused = false;
             audioEngine.playSfx("sfx.win", 0.9, vol);
             for (let i = 0; i < 3; i++) {
-              setTimeout(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
+              this.later(() => this.burst(W * (0.2 + Math.random() * 0.6), H * 0.4, 40, `hsl(${Math.floor(Math.random() * 360)} 90% 65%)`, 260), i * 280);
             }
             this.emit(b.start, `GYŐZELEM: ${this.finishLabel}`, "logic");
             this.onGameOver(this.vars["score"] ?? 0);
@@ -1167,7 +1198,7 @@ export class RuntimeEngine {
   private jumpTo(step: number) {
     if (this.jumpGuard > 40) return; // örök ciklus védő
     this.jumpGuard++;
-    setTimeout(() => (this.jumpGuard = 0), 1500);
+    this.later(() => (this.jumpGuard = 0), 1500);
     this.step = Math.max(0, Math.min(this.getProject().stepCount - 1, step));
     this.stepDeadline = performance.now() + this.getProject().tempoMs;
     this.lastReportedStep = this.step;

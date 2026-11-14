@@ -154,10 +154,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     const b = p.blocks.find((x) => x.id === id);
     if (!b) return;
     if (b.trackId === trackId && b.start === start) return;
+    // Validáció: csak létező sávra, a rács tartományán belül; a hossz ne lógjon ki a lépésszámból
+    if (!p.tracks.some((t) => t.id === trackId)) return;
+    const s = Math.max(0, Math.min(p.stepCount - 1, start));
     const past = [...get().past.slice(-49), snapshot(p)];
     const np: Project = {
       ...p,
-      blocks: p.blocks.map((x) => (x.id === id ? { ...x, trackId, start: Math.max(0, Math.min(p.stepCount - 1, start)) } : x)),
+      blocks: p.blocks.map((x) => (x.id === id ? { ...x, trackId, start: s, length: Math.min(x.length, p.stepCount - s) } : x)),
     };
     scheduleAutosave(np);
     set({ project: np, past, future: [], canUndo: true, canRedo: false, dirty: true });

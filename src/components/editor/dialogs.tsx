@@ -7,6 +7,7 @@ import { Cloud, Trash2, Download, RefreshCw } from "lucide-react";
 import { useEditor } from "@/store/editor";
 import { useToast } from "@/hooks/use-toast";
 import type { Project } from "@/lib/types";
+import { validateProjectData, MAX_CLOUD_BYTES } from "@/lib/projectSchema";
 
 // ================= SÚGÓ =================
 export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -127,6 +128,33 @@ interface CloudProject {
   updatedAt: string;
 }
 
+// A tulajdonosi tokenek helyi tárolója: { projectId: token }
+// A szerver ehhez köti a mentés-felülírást és a törlést (nincs user-rendszer,
+// így más eszközről betöltött projektet véletlenül se írhasson felül bárki).
+const TOKENS_KEY = "appmixer.cloudTokens.v1";
+
+function loadTokens(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function rememberToken(id: string, token: string) {
+  try {
+    const tokens = loadTokens();
+    tokens[id] = token;
+    localStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
+  } catch {
+    // kvóta vagy privát mód – a token elvesztése csak a törlést korlátozza majd
+  }
+}
+
+function tokenFor(id: string): string | undefined {
+  return loadTokens()[id];
+}
+
 export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [items, setItems] = useState<CloudProject[]>([]);
   const [loading, setLoading] = useState(false);
@@ -142,8 +170,12 @@ export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       if (res.ok) {
         const data = await res.json();
         setItems(Array.isArray(data.projects) ? data.projects : []);
+      } else {
+        console.error("Felhőlista hiba:", res.status);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Felhőlista nem elérhető:", err);
+    }
     setLoading(false);
   };
 
@@ -157,7 +189,9 @@ export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           const data = await res.json();
           if (!cancelled) setItems(Array.isArray(data.projects) ? data.projects : []);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Felhőlista nem elérhető:", err);
+      }
       if (!cancelled) setLoading(false);
     })();
     return () => {
@@ -168,24 +202,44 @@ export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const save = async () => {
     setBusy(true);
     try {
-      const res = await fetch("/api/projects", {
+      // Méret-előellenőrzés: a szerver korlátját ne rejtélyes hibával lépjük át
+      if (JSON.stringify(project).length > MAX_CLOUD_BYTES) {
+        toast({
+          title: "A projekt túl nagy a felhőhöz",
+          description: "Törölj néhány feltöltött képet/hangot, vagy exportáld fájlként.",
+          variant: "destructive",
+        });
+        setBusy(false);
+        return;
+      }
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const myToken = project.cloudId ? tokenFor(project.cloudId) : undefined;
+      if (myToken) headers["x-owner-token"] = myToken;
+      let res = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: project.cloudId,
-          name: project.name,
-          data: project,
-        }),
+        headers,
+        body: JSON.stringify({ id: project.cloudId, name: project.name, data: project }),
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (res.status === 403 && project.cloudId) {
+        // Az eredeti példányhoz nincs jogunk (pl. új eszköz) – automatikus fork új projektként
+        res = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: project.name, data: project }),
+        });
+      }
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.project?.id) {
+        if (typeof data.ownerToken === "string") rememberToken(data.project.id, data.ownerToken);
         setProject({ ...project, cloudId: data.project.id }, { silent: true });
         await refresh();
         toast({ title: "Elmentve a felhőbe", description: `„${project.name}” biztonságban van a szerveren.` });
       } else {
-        toast({ title: "A mentés nem sikerült", variant: "destructive" });
+        const msg = (data as { error?: { message?: string } } | null)?.error?.message;
+        toast({ title: "A mentés nem sikerült", description: msg ?? "Ismeretlen szerverhiba.", variant: "destructive" });
       }
-    } catch {
+    } catch (err) {
+      console.error("Felhőmentés hiba:", err);
       toast({ title: "A mentés nem sikerült (nincs kapcsolat a szerverrel)", variant: "destructive" });
     }
     setBusy(false);
@@ -195,17 +249,25 @@ export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     setBusy(true);
     try {
       const res = await fetch(`/api/projects/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        const p = data.project?.data as Project | undefined;
-        if (p && Array.isArray(p.tracks)) {
+      const data = await res.json().catch(() => null);
+      const p = data?.project?.data as Project | undefined;
+      if (res.ok && p) {
+        // Betöltés előtt érvényesítsük a szerkezetet – sérült adat ne olassa el a szerkesztőt
+        const v = validateProjectData(p);
+        if (!v.ok) {
+          toast({ title: "Sérült projekt", description: `A betöltés elutasítva (${v.reason}).`, variant: "destructive" });
+        } else {
           useEditor.getState().setPlaying(false);
           setProject({ ...p, cloudId: id });
           onOpenChange(false);
           toast({ title: "Betöltve", description: `„${p.name}” sikeresen betöltve a felhőből.` });
         }
+      } else {
+        const msg = (data as { error?: { message?: string } } | null)?.error?.message;
+        toast({ title: "A betöltés nem sikerült", description: msg ?? "Ismeretlen hiba.", variant: "destructive" });
       }
-    } catch {
+    } catch (err) {
+      console.error("Felhőbetöltés hiba:", err);
       toast({ title: "A betöltés nem sikerült", variant: "destructive" });
     }
     setBusy(false);
@@ -215,9 +277,17 @@ export function CloudDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     if (!window.confirm("Biztosan törlöd ezt a felhőprojektet?")) return;
     setBusy(true);
     try {
-      await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      const headers: Record<string, string> = {};
+      const myToken = tokenFor(id);
+      if (myToken) headers["x-owner-token"] = myToken;
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE", headers });
+      if (res.status === 403) {
+        toast({ title: "Nincs törlési jogosultságod", description: "Ezt a projektet más eszköz mentette.", variant: "destructive" });
+      }
       await refresh();
-    } catch {}
+    } catch (err) {
+      console.error("Felhőtörlés hiba:", err);
+    }
     setBusy(false);
   };
 

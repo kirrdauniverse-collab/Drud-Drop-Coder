@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./ci.db"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Függőségek telepítése
+        run: bun install --frozen-lockfile
+
+      - name: Prisma kliens generálása
+        run: bunx prisma generate
+
+      - name: Típusellenőrzés
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Egységtesztek
+        run: bun run test
+
+      - name: Build
+        run: bun run build

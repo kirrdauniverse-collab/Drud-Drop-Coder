@@ -65,7 +65,8 @@ export const useDrag = create<DragState>((set, get) => ({
       }
       const st = get();
       const pos = st.hitTest?.(ev.clientX, ev.clientY) ?? null;
-      if (pos) {
+      // Drop-validáció: csak létező sáv és lépés-tartomány fogad blokkot
+      if (pos && useEditor.getState().project.tracks.some((t) => t.id === pos.trackId)) {
         const ed = useEditor.getState();
         if (st.source === "library" && st.typeId) {
           ed.addBlock(st.typeId, pos.trackId, pos.step);

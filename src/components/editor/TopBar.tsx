@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Square, Repeat, Volume2, Undo2, Redo2, Save, Cloud, HelpCircle, SlidersHorizontal, FileDown, FileUp, FilePlus2, Rocket, Moon, Gauge, Gamepad2, LayoutGrid, Sword, MousePointerClick, Crosshair, Flag, Columns2, Bomb, Hammer, Compass, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { validateProjectData } from "@/lib/projectSchema";
 
 export function TopBar({
   onOpenHelp, onOpenCloud,
@@ -68,16 +69,22 @@ export function TopBar({
   const handleImportFile = async (file: File | undefined) => {
     if (!file) return;
     try {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Túl nagy fájl", description: "A projekt fájl legfeljebb 10 MB lehet.", variant: "destructive" });
+        return;
+      }
       const text = await file.text();
       const p = JSON.parse(text);
-      if (Array.isArray(p?.tracks) && Array.isArray(p?.blocks)) {
+      // Ugyanaz a séma érvényesít, mint a felhőmentésnél – a sérült/kézműves JSON nem tölti be magát
+      const v = validateProjectData(p);
+      if (v.ok) {
         useEditor.getState().loadProject(p);
         toast({ title: "Projekt betöltve", description: `„${p.name ?? "névtelen"}” importálva a fájlból.` });
       } else {
-        toast({ title: "Érvénytelen fájl", description: "Ez a fájl nem tűnik AppMixer projektnek.", variant: "destructive" });
+        toast({ title: "Érvénytelen fájl", description: `Ez nem érvényes AppMixer projekt (${v.reason}).`, variant: "destructive" });
       }
     } catch {
-      toast({ title: "A fájl beolvasása nem sikerült", variant: "destructive" });
+      toast({ title: "A fájl beolvasása nem sikerült", description: "Nem sikerült a JSON beolvasása.", variant: "destructive" });
     }
     if (importRef.current) importRef.current.value = "";
   };

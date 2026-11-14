@@ -33,9 +33,10 @@ model Post {
 
 // AppMixer felhőbe mentett projektek
 model SavedProject {
-  id        String   @id @default(uuid())
-  name      String
-  data      String   // a teljes projekt JSON-ként (sávok, blokkok, saját tartalmak)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  data           String   // a teljes projekt JSON-ként (sávok, blokkok, saját tartalmak)
+  ownerTokenHash String?  // SHA-256 a tulajdonosi tokennel – felülírás/törlés védelem (nincs user-rendszer)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

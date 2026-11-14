@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { validateProjectData, MAX_CLOUD_BYTES } from "@/lib/projectSchema";
+import { generateOwnerToken, hashOwnerToken, ownerTokenFrom, rateLimit, clientIp } from "@/lib/cloud-guard";
 
-// GET /api/projects – felhőprojektek listája
+export const dynamic = "force-dynamic";
+
+const ID_RE = /^[a-zA-Z0-9_-]{8,64}$/;
+
+// Egységes hibaválasz: { error: { code, message } } – a kliens toastja ezt jeleníti meg
+function fail(status: number, code: string, message: string) {
+  return NextResponse.json({ error: { code, message } }, { status });
+}
+
+// GET /api/projects – felhőprojektek listája (címek, nem tartalmak)
 export async function GET() {
   try {
     const projects = await db.savedProject.findMany({
@@ -9,36 +20,64 @@ export async function GET() {
       select: { id: true, name: true, updatedAt: true },
     });
     return NextResponse.json({ projects });
-  } catch {
-    return NextResponse.json({ projects: [] }, { status: 200 });
+  } catch (err) {
+    console.error("GET /api/projects hiba:", err);
+    return fail(500, "db_error", "A projektlista most nem elérhető");
   }
 }
 
 // POST /api/projects – aktuális projekt mentése (upsert)
+// Tulajdonosi védelem: ha a projektnek van tárolt tokene, csak ugyanazzal a tokennel
+// írható felül. Régi (token nélküli) projekteknél az első új mentés generál egyet.
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`save:${clientIp(req)}`, 30, 60_000)) {
+    return fail(429, "rate_limited", "Túl sok mentés rövid időn belül – próbáld újra egy perc múlva");
+  }
   try {
     const body = await req.json();
-    const { id, name, data } = body as { id?: string; name?: string; data?: unknown };
-    if (!name || typeof name !== "string" || !data || typeof data !== "object") {
-      return NextResponse.json({ error: "Hiányzó vagy érvénytelen mezők" }, { status: 400 });
+    const rawName = typeof body?.name === "string" ? body.name.trim() : "";
+    const name = (rawName || "Névtelen projekt").slice(0, 80);
+    const id = typeof body?.id === "string" && ID_RE.test(body.id) ? body.id : undefined;
+    const providedToken = ownerTokenFrom(req, body);
+
+    // Szigorú szerkezeti validáció – a mérgezett/hibás JSON nem kerülhet be
+    const validation = validateProjectData(body?.data);
+    if (!validation.ok) {
+      return fail(400, "invalid_project", `A projekt adatszerkezete érvénytelen (${validation.reason})`);
     }
-    // Méretkorlát: a saját tartalmak (data URL-ek) miatt legfeljebb ~8 MB
-    const serialized = JSON.stringify(data);
-    if (serialized.length > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: "A projekt túl nagy a felhőmentéshez (max 8 MB)" }, { status: 413 });
+    const serialized = JSON.stringify(body.data);
+    if (serialized.length > MAX_CLOUD_BYTES) {
+      return fail(413, "too_large", "A projekt túl nagy a felhőmentéshez (max 8 MB)");
     }
-    let project;
+
     if (id) {
-      project = await db.savedProject.upsert({
-        where: { id },
-        update: { name, data: serialized, updatedAt: new Date() },
-        create: { name, data: serialized },
-      });
-    } else {
-      project = await db.savedProject.create({ data: { name, data: serialized } });
+      const existing = await db.savedProject.findUnique({ where: { id } });
+      if (existing) {
+        if (existing.ownerTokenHash) {
+          if (!providedToken || hashOwnerToken(providedToken) !== existing.ownerTokenHash) {
+            return fail(403, "forbidden", "Ehhez a projekthez nincs mentési jogosultságod – töltsd be új néven");
+          }
+        }
+        const ownerToken = providedToken ?? generateOwnerToken();
+        await db.savedProject.update({
+          where: { id },
+          data: { name, data: serialized, ownerTokenHash: hashOwnerToken(ownerToken), updatedAt: new Date() },
+        });
+        return NextResponse.json({ project: { id, name, updatedAt: new Date() }, ownerToken });
+      }
     }
-    return NextResponse.json({ project: { id: project.id, name: project.name, updatedAt: project.updatedAt } });
-  } catch {
-    return NextResponse.json({ error: "Szerverhiba a mentés közben" }, { status: 500 });
+
+    // Új projekt létrehozása (a kliens id-ja csak érvényes formátum esetén él)
+    const ownerToken = providedToken ?? generateOwnerToken();
+    const project = await db.savedProject.create({
+      data: id ? { id, name, data: serialized, ownerTokenHash: hashOwnerToken(ownerToken) } : { name, data: serialized, ownerTokenHash: hashOwnerToken(ownerToken) },
+    });
+    return NextResponse.json({
+      project: { id: project.id, name: project.name, updatedAt: project.updatedAt },
+      ownerToken,
+    });
+  } catch (err) {
+    console.error("POST /api/projects hiba:", err);
+    return fail(500, "server_error", "Szerverhiba a mentés közben");
   }
 }
